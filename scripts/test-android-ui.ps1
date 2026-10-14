@@ -19,7 +19,7 @@ try{
     & adb -s $Device reverse "tcp:$davPort" "tcp:$davPort"
     & adb -s $Device shell am instrument -w -e davPort "$davPort" com.resumestudio.mobile.tests/com.resumestudio.AcceptanceInstrumentation | Tee-Object -FilePath "$build\instrumentation.txt"
     if((Get-Content "$build\instrumentation.txt" -Raw) -match 'Process crashed|INSTRUMENTATION_CODE: 1' -or (Get-Content "$build\instrumentation.txt" -Raw) -notmatch 'INSTRUMENTATION_CODE: 0'){throw 'Android instrumentation did not complete successfully'}
-}finally{& adb -s $Device reverse --remove "tcp:$davPort";if(!$davProcess.HasExited){Stop-Process -Id $davProcess.Id}}
+
 if((Get-Content "$build\instrumentation.txt" -Raw) -match 'INSTRUMENTATION_RESULT: error=|INSTRUMENTATION_CODE: 1|Process crashed'){throw 'Production Android instrumentation failed'}
 New-Item -ItemType Directory -Force "$build\results"|Out-Null
 foreach($artifact in @('result.json','screen.png','resume.pdf','resume-pdf.png')){
@@ -32,16 +32,23 @@ if(!(Test-Path "$build\results\result.json")){throw 'No Android acceptance repor
 $report=Get-Content "$build\results\result.json" -Raw|ConvertFrom-Json
 if($report -is [string]){$report=$report|ConvertFrom-Json}
 if($report.autoSyncFixture){
+    $fixture=Join-Path $davRoot 'resume-studio.sync.json'
+    $before=(Get-FileHash -LiteralPath $fixture -Algorithm SHA256).Hash
+    $readsBefore=@(Select-String -LiteralPath "$davRoot\error.txt" -Pattern '"GET ').Count
     & adb -s $Device shell input keyevent KEYCODE_HOME
     & adb -s $Device shell cmd jobscheduler run -f com.resumestudio.mobile 903
-    $fixture=Join-Path $davRoot 'resume-studio.sync.json';$autoPassed=$false
-    for($attempt=0;$attempt -lt 60;$attempt++){
-        if(Test-Path -LiteralPath $fixture){try{$envelope=Get-Content -LiteralPath $fixture -Raw|ConvertFrom-Json;$autoPassed=@($envelope.data.resumes|Where-Object {$_.title -eq '后台自动同步验收'}).Count -eq 1 -and @($envelope.extensions.interviewStudy.decks).Count -gt 0;if($autoPassed){break}}catch{}}
+    $autoPassed=$false
+    for($attempt=0;$attempt -lt 30;$attempt++){
+        $readsNow=@(Select-String -LiteralPath "$davRoot\error.txt" -Pattern '"GET ').Count
+        if($readsNow -gt $readsBefore){$autoPassed=$true;break}
         Start-Sleep -Seconds 1
     }
-    if(!$autoPassed){throw 'Android background periodic sync did not upload the resume and interview deck'}
-    $report.passed+=@('background network job syncs resume and interview deck');$report.count++
+    if(!$autoPassed){throw 'Android background check did not read the cloud snapshot'}
+    Start-Sleep -Seconds 3
+    if((Get-FileHash -LiteralPath $fixture -Algorithm SHA256).Hash -ne $before){throw 'Background check changed cloud data without confirmation'}
+    $report.passed+=@('background job waits for confirmation and leaves cloud unchanged');$report.count++
     [IO.File]::WriteAllText("$build\results\result.json",($report|ConvertTo-Json -Depth 20 -Compress),[Text.UTF8Encoding]::new($false))
 }
 if($report.error){throw $report.error};if(!$report.count){throw 'No checks passed'}
 Write-Output "PASS: $($report.count) production APK UI checks"
+}finally{& adb -s $Device reverse --remove "tcp:$davPort";if(!$davProcess.HasExited){Stop-Process -Id $davProcess.Id}}

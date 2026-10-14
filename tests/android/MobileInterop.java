@@ -8,12 +8,15 @@ import java.util.*;
 /** Line-oriented test adapter for the actual Android data/sync classes, running on the host JVM. */
 public final class MobileInterop {
     public static void main(String[] args)throws Exception{
+        System.setOut(new PrintStream(System.out,true,StandardCharsets.UTF_8));
         Path root=Paths.get(new String(Base64.getDecoder().decode(args[0]),StandardCharsets.UTF_8));MobileApi api=new MobileApi(root);
         MobileSync sync=new MobileSync(api.store,root,new MobileSync.Dav(args[1],"user","password"),args[1],"android-test");MobileSync.Plan plan=null;
         BufferedReader input=new BufferedReader(new InputStreamReader(System.in,StandardCharsets.UTF_8));String line;
         while((line=input.readLine())!=null){try{var r=Json.object(Json.parse(line));String method=Json.str(r,"method");Object result;
             switch(method){
                 case "inspect":plan=sync.inspect();result=plan.display();break;
+                case "cancel":plan=null;result=true;break;
+                case "size":result=SyncStore.dataSize(Json.object(r.get("snapshot")));break;
                 case "execute":result=sync.execute(Objects.requireNonNull(plan),Json.str(r,"direction"));break;
                 case "seed":{var doc=Json.object(r.get("doc"));Server.validate(Json.str(r,"kind"),doc);result=api.store.save(Json.str(r,"kind"),doc);break;}
                 case "import":result=api.store.syncImport(Json.str(api.store.syncExtendedSnapshot(),"hash"),Json.object(r.get("snapshot")));break;

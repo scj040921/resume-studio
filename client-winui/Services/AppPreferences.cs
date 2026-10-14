@@ -29,14 +29,16 @@ public sealed class AppPreferences
         }
         catch(Exception e) when(e is IOException or JsonException or UnauthorizedAccessException) { return new(); }
     }
-    public async Task SaveAsync(string directory)
+    public async Task SaveAsync(string directory,bool skipUnchanged=false)
     {
         await fileLock.WaitAsync();
         try
         {
             Directory.CreateDirectory(directory);
             string path=Path.Combine(directory,"settings.json"),temporary=path+".tmp";
-            await File.WriteAllTextAsync(temporary,JsonSerializer.Serialize(this,BackendClient.Json));
+            string json=JsonSerializer.Serialize(this,BackendClient.Json);
+            if(skipUnchanged&&File.Exists(path)&&await File.ReadAllTextAsync(path)==json)return;
+            await File.WriteAllTextAsync(temporary,json);
             File.Move(temporary,path,true);
         }
         finally { fileLock.Release(); }

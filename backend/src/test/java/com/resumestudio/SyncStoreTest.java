@@ -14,7 +14,15 @@ public final class SyncStoreTest {
         Path root=Files.createTempDirectory("resume-sync-test-"); Store store=new Store(root);
         Files.writeString(root.resolve("settings.json"),"{\"theme\":\"dark\",\"apiKey\":\"LOCAL-ONLY\"}");
         store.save("resumes",resume("one")); store.checkpoint("one","第一版");
+        var expectedFileTime=java.time.Instant.parse("2026-01-03T03:04:05Z");
+        Files.setLastModifiedTime(root.resolve("settings.json"),java.nio.file.attribute.FileTime.from(java.time.Instant.parse("2026-01-01T00:00:00Z")));
+        Files.setLastModifiedTime(root.resolve("resumes/one.json"),java.nio.file.attribute.FileTime.from(java.time.Instant.parse("2026-01-02T00:00:00Z")));
+        String revisionId=Json.str(store.history("one").getFirst(),"id");
+        Files.setLastModifiedTime(root.resolve("history/one/"+revisionId+".json.gz"),java.nio.file.attribute.FileTime.from(expectedFileTime));
+        Files.writeString(root.resolve("sync-local.json"),"{}");
+        Files.setLastModifiedTime(root.resolve("sync-local.json"),java.nio.file.attribute.FileTime.from(java.time.Instant.parse("2030-01-01T00:00:00Z")));
         var before=store.syncSnapshot(); var data=Json.object(before.get("snapshot"));
+        check(Json.str(before,"modifiedAt").equals(expectedFileTime.toString()),"actual synced-file modification time includes history and excludes credentials");
         check(!Json.object(data.get("settings")).containsKey("apiKey"),"secret excluded");
         check(Json.array(data.get("history")).size()==1,"history included");
         var badTitle=resume("one"); badTitle.put("title",123); rejects(store,before,"resumes",badTitle,"numeric resume title");

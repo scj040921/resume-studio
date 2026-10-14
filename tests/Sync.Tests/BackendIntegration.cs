@@ -32,7 +32,7 @@ static class BackendIntegration
         await a.SaveAsync("resumes/resume-a/history",new JsonObject());
         var ca=new SyncCoordinator(a,remote,a.Directory,"integration-dav","device-a");
         var cb=new SyncCoordinator(b,remote,b.Directory,"integration-dav","device-b");
-        var initial=await ca.InspectAsync(); Check(initial.Action==SyncAction.Push,"new target uploads"); await ca.ExecuteAsync(initial);
+        var initial=await ca.InspectAsync(); Check(initial.Action==SyncAction.Push,"new target uploads"); await ca.ExecuteAsync(initial,SyncAction.Push);
         var download=await cb.InspectAsync(); Check(download.Action==SyncAction.Conflict,"first association requires direction"); await cb.ExecuteAsync(download,SyncAction.Pull);
         var first=(await b.ReadAsync(default)).Snapshot;
         foreach(string kind in new[] {"resumes","favorites","applications","sources","schedule","history"}) Check(first[kind]!.AsArray().Count==1,kind+" transferred");
@@ -44,14 +44,14 @@ static class BackendIntegration
         var cloud=await remote.ReadAsync(default); Check(!Encoding.UTF8.GetString(cloud!.Bytes).Contains("A-LOCAL"),"key absent from cloud");
         Check((await cb.InspectAsync()).Action==SyncAction.Unchanged,"roundtrip establishes baseline");
         resume["title"]="A 修改版"; await a.SaveAsync("resumes",resume);
-        var upload=await ca.InspectAsync(); Check(upload.Action==SyncAction.Push,"local-only change uploads"); await ca.ExecuteAsync(upload);
-        var pull=await cb.InspectAsync(); Check(pull.Action==SyncAction.Pull,"remote-only change downloads"); await cb.ExecuteAsync(pull);
+        var upload=await ca.InspectAsync(); Check(upload.Action==SyncAction.Push,"local-only change uploads"); await ca.ExecuteAsync(upload,SyncAction.Push);
+        var pull=await cb.InspectAsync(); Check(pull.Action==SyncAction.Pull,"remote-only change downloads"); await cb.ExecuteAsync(pull,SyncAction.Pull);
         Check((await b.ReadAsync(default)).Snapshot["resumes"]![0]!["title"]!.GetValue<string>()=="A 修改版","updated title arrived");
-        await a.DeleteAsync("favorites/favorite-a"); await ca.ExecuteAsync(await ca.InspectAsync()); await cb.ExecuteAsync(await cb.InspectAsync());
+        await a.DeleteAsync("favorites/favorite-a"); await ca.ExecuteAsync(await ca.InspectAsync(),SyncAction.Push); await cb.ExecuteAsync(await cb.InspectAsync(),SyncAction.Pull);
         Check((await b.ReadAsync(default)).Snapshot["favorites"]!.AsArray().Count==0,"deletion propagated");
         resume["title"]="A 分支"; await a.SaveAsync("resumes",resume);
         var other=(JsonObject)((await b.ReadAsync(default)).Snapshot["resumes"]![0]!.DeepClone()); other["title"]="B 分支"; await b.SaveAsync("resumes",other);
-        await ca.ExecuteAsync(await ca.InspectAsync());
+        await ca.ExecuteAsync(await ca.InspectAsync(),SyncAction.Push);
         var conflict=await cb.InspectAsync(); Check(conflict.Action==SyncAction.Conflict,"divergent changes conflict");
         string unchanged=(await b.ReadAsync(default)).Hash;
         try { await cb.ExecuteAsync(conflict); throw new Exception("Conflict silently applied"); } catch(IOException) { }
@@ -59,16 +59,16 @@ static class BackendIntegration
         await cb.ExecuteAsync(conflict,SyncAction.Pull);
         Check(Directory.GetFiles(Path.Combine(b.Directory,"sync-backups"),"*.json").Any(path=>File.ReadAllText(path).Contains("B 分支")),"replaced branch is in backup");
         var stale=await cb.InspectAsync(); other["title"]="B 新修改"; await b.SaveAsync("resumes",other);
-        try { await cb.ExecuteAsync(stale); throw new Exception("Stale local plan silently applied"); } catch(IOException) { }
+        try { await cb.ExecuteAsync(stale,SyncAction.Push); throw new Exception("Stale local plan silently applied"); } catch(IOException) { }
         // Metadata extensions survive a subsequent local upload.
         cloud=await remote.ReadAsync(default); var envelope=SyncProtocol.Parse(cloud!.Bytes); envelope["futureEnvelope"]=new JsonObject {["retained"]=true};
         await remote.WriteAsync(Encoding.UTF8.GetBytes(envelope.ToJsonString()),cloud.ETag,default);
-        await cb.ExecuteAsync(await cb.InspectAsync());
+        await cb.ExecuteAsync(await cb.InspectAsync(),SyncAction.Push);
         var preserved=SyncProtocol.Parse((await remote.ReadAsync(default))!.Bytes); Check(preserved["futureEnvelope"]!["retained"]!.GetValue<bool>(),"unknown envelope retained on upload");
         var observing=await ca.InspectAsync();
         cloud=await remote.ReadAsync(default);var changedEnvelope=SyncProtocol.Parse(cloud!.Bytes);changedEnvelope["snapshotId"]=Guid.NewGuid().ToString("N");
         await remote.WriteAsync(Encoding.UTF8.GetBytes(changedEnvelope.ToJsonString()),cloud.ETag,default);
-        try { await ca.ExecuteAsync(observing); throw new Exception("Stale cloud plan silently applied"); } catch(IOException) { }
+        try { await ca.ExecuteAsync(observing,SyncAction.Pull); throw new Exception("Stale cloud plan silently applied"); } catch(IOException) { }
         Console.WriteLine("PASS backend/DAV integration: two Java stores, all collections/history/photo/snapshots, keys excluded, roundtrip/update/delete, conflict backup, local/cloud stale plans, extensions");
         Console.WriteLine("Integration fixtures: "+fixture);
     }

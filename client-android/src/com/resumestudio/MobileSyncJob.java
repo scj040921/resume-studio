@@ -6,7 +6,7 @@ import java.io.IOException;
 import java.util.*;
 import java.util.concurrent.*;
 
-/** Runs only while Android reports a usable network; conflicts are left for the user. */
+/** Background checks never select a version on the user's behalf. */
 public final class MobileSyncJob extends JobService {
     static final int JOB_ID=903;
     private static final long PERIOD=30L*60L*1000L;
@@ -38,8 +38,8 @@ public final class MobileSyncJob extends JobService {
                         if(device.isEmpty()){device=UUID.randomUUID().toString();preferences.edit().putString("deviceId",device).apply();}
                         MobileSync sync=new MobileSync(api.store,api.root,new MobileSync.Dav(directory,user,password),directory+"|"+user,device);
                         MobileSync.Plan plan=sync.inspect();
-                        if(plan.action.equals("conflict"))status="自动同步遇到两端不同修改，请打开设置选择保留方向";
-                        else {String action=sync.execute(plan,null);status=switch(action){case "push"->"已自动上传";case "pull"->"已自动下载并备份";default->"两端资料一致";};}
+                        if(!plan.action.equals("unchanged"))status="两端资料有差异，请打开设置比较并确认保留版本";
+                        else {sync.execute(plan,null);status="两端资料一致，无需同步";}
                     }
                 }
             }catch(Exception ex){status="自动同步未完成："+Objects.toString(ex.getMessage(),"网络或配置异常");}

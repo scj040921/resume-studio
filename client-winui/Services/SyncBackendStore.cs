@@ -8,7 +8,8 @@ public sealed class SyncBackendStore(BackendClient api) : ISyncLocalStore
     public async Task<SyncLocal> ReadAsync(CancellationToken cancellationToken)
     {
         var result=await api.Get<System.Text.Json.JsonElement>("sync/extended-snapshot",cancellationToken);
-        return new(JsonNode.Parse(result.GetProperty("snapshot").GetRawText())!.AsObject(),result.GetProperty("hash").GetString()!);
+        DateTimeOffset? modified=result.TryGetProperty("modifiedAt",out var time)&&DateTimeOffset.TryParse(time.GetString(),out var parsed)?parsed:null;
+        return new(JsonNode.Parse(result.GetProperty("snapshot").GetRawText())!.AsObject(),result.GetProperty("hash").GetString()!,modified);
     }
     public async Task ValidateAsync(JsonObject snapshot,CancellationToken cancellationToken)
     {

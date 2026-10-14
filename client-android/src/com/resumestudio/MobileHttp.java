@@ -11,8 +11,8 @@ import java.io.FileOutputStream;
 /** No redirects, cookies or permissive TLS. All response bodies are bounded. */
 public final class MobileHttp {
     public static final class Result {
-        public final int status; public final byte[] bytes; public final String etag;
-        Result(int status,byte[] bytes,String etag) {this.status=status;this.bytes=bytes;this.etag=etag;}
+        public final int status; public final byte[] bytes; public final String etag,modifiedAt;
+        Result(int status,byte[] bytes,String etag,String modifiedAt) {this.status=status;this.bytes=bytes;this.etag=etag;this.modifiedAt=modifiedAt;}
         public String text() {return new String(bytes,StandardCharsets.UTF_8);}
     }
     public static Result request(URI uri,String method,Map<String,String> headers,byte[] body,int limit) throws IOException {
@@ -26,7 +26,8 @@ public final class MobileHttp {
             InputStream stream=status>=400?c.getErrorStream():c.getInputStream();byte[] bytes;
             if(stream==null) bytes=new byte[0];else try(InputStream in=stream){bytes=MobileCompat.readNBytes(in,limit+1);}
             if(bytes.length>limit)throw new IOException("响应内容过大");
-            return new Result(status,bytes,c.getHeaderField("ETag"));
+            String modified="";try{String header=c.getHeaderField("Last-Modified");if(header!=null)modified=java.time.ZonedDateTime.parse(header,java.time.format.DateTimeFormatter.RFC_1123_DATE_TIME).toInstant().toString();}catch(java.time.format.DateTimeParseException ignored){}
+            return new Result(status,bytes,c.getHeaderField("ETag"),modified);
         } finally {c.disconnect();}
     }
     public static String publicRequest(URI uri,String payload,int limit) throws IOException {

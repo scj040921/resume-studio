@@ -5,10 +5,10 @@ namespace ResumeStudio;
 
 public sealed partial class MainWindow
 {
-    private async Task SaveNativePreview(string path)
+    private async Task SaveNativePreview(string path,UIElement? target=null)
     {
         await Task.Delay(250);
-        var bitmap=new Microsoft.UI.Xaml.Media.Imaging.RenderTargetBitmap(); await bitmap.RenderAsync(shell);
+        var bitmap=new Microsoft.UI.Xaml.Media.Imaging.RenderTargetBitmap(); await bitmap.RenderAsync(target??shell);
         if(bitmap.PixelWidth==0||bitmap.PixelHeight==0) return;
         var buffer=await bitmap.GetPixelsAsync(); var pixels=new byte[buffer.Length];
         using(var reader=Windows.Storage.Streams.DataReader.FromBuffer(buffer)) reader.ReadBytes(pixels);
