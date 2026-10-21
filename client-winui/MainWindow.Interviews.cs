@@ -26,13 +26,14 @@ public sealed partial class MainWindow
         var decks=await api.Get<List<InterviewDeck>>("interviews");if(!PageIsCurrent("interviews",generation))return;
         decks=decks.Where(d=>d.StudyType!="exam").OrderBy(d=>d.Title).ToList();
         body.RowDefinitions.Add(new RowDefinition {Height=GridLength.Auto});body.RowDefinitions.Add(new RowDefinition {Height=new GridLength(1,GridUnitType.Star)});body.RowDefinitions.Add(new RowDefinition {Height=GridLength.Auto});
-        var tools=Stack(9);var toolbar=Row();toolbar.Children.Add(Button("＋ 导入题目文档",ImportInterviews,true));
-        var select=new ComboBox {Header="题库",ItemsSource=decks,MinWidth=200,MaxWidth=360,Tag="interview-deck"};
-        var filter=new ComboBox {Header="练习范围",ItemsSource=new[]{"全部题目","未掌握","已记住","未标记","今日待复习"},MinWidth=140,Tag="interview-filter"};
+        var tools=Stack(9);var toolbar=Row();toolbar.VerticalAlignment=VerticalAlignment.Top;
+        toolbar.Children.Add(ToolbarField("",Button("＋ 导入题目文档",ImportInterviews,true)));
+        var select=new ComboBox {ItemsSource=decks,MinWidth=200,MaxWidth=360,Tag="interview-deck"};
+        var filter=new ComboBox {ItemsSource=new[]{"全部题目","未掌握","已记住","未标记","今日待复习"},MinWidth=140,Tag="interview-filter"};
         string[] filters=["all","learning","remembered","unseen","due"];filter.SelectedIndex=Math.Max(0,Array.IndexOf(filters,interviewFilter));
-        toolbar.Children.Add(select);toolbar.Children.Add(filter);
+        toolbar.Children.Add(ToolbarField("题库",select));toolbar.Children.Add(ToolbarField("练习范围",filter));
         InterviewDeck? deck=decks.FirstOrDefault(d=>d.Id==interviewDeckId)??decks.FirstOrDefault();select.SelectedItem=deck;
-        var remove=Button("删除题库",async ()=> {var selected=deck;if(selected is null)return;if(await Confirm("删除这份题库？",selected.Title+"，题目及背诵进度将一并删除。")){await api.Delete("interviews/"+selected.Id);interviewDeckId="";interviewIndex=0;await Navigate("interviews");}});remove.IsEnabled=deck is not null;toolbar.Children.Add(remove);
+        var remove=Button("删除题库",async ()=> {var selected=deck;if(selected is null)return;if(await Confirm("删除这份题库？",selected.Title+"，题目及背诵进度将一并删除。")){await api.Delete("interviews/"+selected.Id);interviewDeckId="";interviewIndex=0;await Navigate("interviews");}});remove.IsEnabled=deck is not null;toolbar.Children.Add(ToolbarField("",remove));
         tools.Children.Add(toolbar);var stats=Text("",13,true);stats.Tag="interview-stats";tools.Children.Add(stats);tools.Margin=new Thickness(0,0,0,12);body.Children.Add(tools);
         var host=new Border {MaxWidth=1040,HorizontalAlignment=HorizontalAlignment.Stretch,Tag="interview-card-host"};Grid.SetRow(host,1);body.Children.Add(host);
         var footer=Stack(8);footer.Margin=new Thickness(0,12,0,0);
@@ -42,7 +43,7 @@ public sealed partial class MainWindow
         previous=Button("← 上一题",()=>{Move(-1);return Task.CompletedTask;});
         next=Button("下一题 →",()=>{Move(1);return Task.CompletedTask;});arrows.Children.Add(previous);arrows.Children.Add(position);arrows.Children.Add(next);footer.Children.Add(arrows);
         var tip=Text("使用左右方向键或按钮切题；滚动鼠标滚轮可阅读答案。标记后自动进入下一题。",11);tip.HorizontalAlignment=HorizontalAlignment.Center;footer.Children.Add(tip);Grid.SetRow(footer,2);body.Children.Add(footer);
-        toolbar.Children.Add(Button("随机抽题",()=>{if(visible.Count>0){interviewIndex=Random.Shared.Next(visible.Count);Draw();_=SaveInterviewBookmark(deck!,visible[interviewIndex].Id);}return Task.CompletedTask;}));
+        toolbar.Children.Add(ToolbarField("",Button("随机抽题",()=>{if(visible.Count>0){interviewIndex=Random.Shared.Next(visible.Count);Draw();_=SaveInterviewBookmark(deck!,visible[interviewIndex].Id);}return Task.CompletedTask;})));
         bool Alive()=>PageIsCurrent("interviews",generation);
         bool Move(int delta){if(!Alive()||saving||visible.Count==0)return false;int target=Math.Clamp(interviewIndex+delta,0,visible.Count-1);if(target==interviewIndex)return false;interviewIndex=target;Draw();_=SaveInterviewBookmark(deck!,visible[interviewIndex].Id);return true;}
         void Draw()

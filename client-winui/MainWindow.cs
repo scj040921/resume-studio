@@ -83,6 +83,15 @@ public sealed partial class MainWindow : Window
     private static TextBlock Text(string text,double size=14,bool bold=false) => new() { Text=text,FontSize=size,FontFamily=ResumeTypography.InterfaceFont,FontWeight=bold?Microsoft.UI.Text.FontWeights.SemiBold:Microsoft.UI.Text.FontWeights.Normal,Foreground=Brush(Ink),TextWrapping=TextWrapping.Wrap };
     private static StackPanel Stack(double spacing=12) => new() { Spacing=spacing };
     private static StackPanel Row(double spacing=10) => new() { Orientation=Orientation.Horizontal,Spacing=spacing };
+    private static StackPanel ToolbarField(string label,FrameworkElement control)
+    {
+        var field=Stack(6);field.VerticalAlignment=VerticalAlignment.Top;
+        var heading=Text(string.IsNullOrWhiteSpace(label)?" ":label,12);
+        heading.MinHeight=19;
+        if(string.IsNullOrWhiteSpace(label))heading.Opacity=0;
+        field.Children.Add(heading);control.VerticalAlignment=VerticalAlignment.Top;field.Children.Add(control);
+        return field;
+    }
     private static Border Card(UIElement child,Thickness? padding=null) => InteractiveCard(child,padding??new Thickness(22));
     private Button Button(string label,Func<Task> action,bool primary=false)
     {

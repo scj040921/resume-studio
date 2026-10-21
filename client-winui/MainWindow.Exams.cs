@@ -24,18 +24,21 @@ public sealed partial class MainWindow
         Heading("笔试题复盘","导入笔试题后逐题记录错因、知识缺口和下一步改进。内容自动保存到本机。");
         var all=await api.Get<List<InterviewDeck>>("interviews");if(!PageIsCurrent("exams",generation))return;
         var decks=all.Where(d=>d.StudyType=="exam").OrderBy(d=>d.Title).ToList();
-        var root=Stack(14);var toolbar=Row();toolbar.Children.Add(Button("＋ 导入笔试题文件",ImportExamQuestions,true));
+        var root=Stack(14);var toolbar=Row();toolbar.VerticalAlignment=VerticalAlignment.Top;
+        toolbar.Children.Add(ToolbarField("",Button("＋ 导入笔试题文件",ImportExamQuestions,true)));
         var selected=decks.FirstOrDefault(d=>d.Id==examDeckId)??decks.FirstOrDefault();
-        var picker=new ComboBox {Header="复盘题库",ItemsSource=decks,SelectedItem=selected,MinWidth=220};toolbar.Children.Add(picker);
+        var picker=new ComboBox {ItemsSource=decks,SelectedItem=selected,MinWidth=220};toolbar.Children.Add(ToolbarField("复盘题库",picker));
         var count=selected?.Questions.Count??0;var done=selected?.Questions.Count(q=>q.Status=="remembered")??0;var pending=selected?.Questions.Count(q=>q.Status!="remembered")??0;
-        toolbar.Children.Add(Text($"共 {count} 题 · 已复盘 {done} · 待复盘 {pending}",13,true));root.Children.Add(toolbar);
+        var stats=Text($"共 {count} 题 · 已复盘 {done} · 待复盘 {pending}",13,true);
+        var statsCell=new Grid {MinHeight=40};stats.VerticalAlignment=VerticalAlignment.Center;statsCell.Children.Add(stats);
+        toolbar.Children.Add(ToolbarField("",statsCell));root.Children.Add(toolbar);
         var host=new Border {MinHeight=440,MaxWidth=980,HorizontalAlignment=HorizontalAlignment.Stretch};root.Children.Add(host);
         var pageButtons=Row();pageButtons.HorizontalAlignment=HorizontalAlignment.Center;root.Children.Add(pageButtons);
         void Draw()
         {
             selected=picker.SelectedItem as InterviewDeck;examDeckId=selected?.Id??"";
             count=selected?.Questions.Count??0;done=selected?.Questions.Count(q=>q.Status=="remembered")??0;pending=count-done;
-            if(toolbar.Children.Count>2)toolbar.Children[2]=Text($"共 {count} 题 · 已复盘 {done} · 待复盘 {pending}",13,true);
+            stats.Text=$"共 {count} 题 · 已复盘 {done} · 待复盘 {pending}";
             if(selected is null||count==0){host.Child=Card(Text("导入 Markdown、TXT、DOCX 或 PDF 笔试题，按标题拆分后逐题复盘。",16));pageButtons.Children.Clear();return;}
             examQuestionIndex=Math.Clamp(examQuestionIndex,0,count-1);var q=selected.Questions[examQuestionIndex];
             var card=Stack(14);card.Children.Add(Text($"第 {examQuestionIndex+1} / {count} 题  ·  {(q.Status=="remembered"?"已复盘":q.Status=="learning"?"需要再练":"待复盘")}",12,true));
