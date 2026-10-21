@@ -31,6 +31,24 @@ final class SyncStore {
         try { return HexFormat.of().formatHex(MessageDigest.getInstance("SHA-256").digest(Json.write(canonical(snapshot)).getBytes(StandardCharsets.UTF_8))); }
         catch(java.security.NoSuchAlgorithmException ex) { throw new IllegalStateException(ex); }
     }
+    /** Latest actual file time of the selected data, excluding credentials, caches and baselines. */
+    static String modifiedAt(Path root,Map<String,Object> snapshot)throws IOException {
+        var paths=new ArrayList<Path>();paths.add(root.resolve("settings.json"));
+        var kinds=new ArrayList<>(KINDS);if(snapshot.containsKey("interviews"))kinds.add("interviews");
+        for(String kind:kinds)for(Object value:Json.array(snapshot.get(kind)))paths.add(root.resolve(kind).resolve(id(Json.object(value).get("id"))+".json"));
+        for(Object value:Json.array(snapshot.get("history"))){var entry=Json.object(value);paths.add(root.resolve("history").resolve(id(entry.get("resumeId"))).resolve(id(entry.get("id"))+".json.gz"));}
+        java.time.Instant latest=null;
+        for(Path path:paths){safe(root,path);if(Files.exists(path)){var time=Files.getLastModifiedTime(path).toInstant();if(latest==null||time.isAfter(latest))latest=time;}}
+        return latest==null?"":latest.toString();
+    }
+    /** Shared comparison-size JSON: ordinal keys, exact coefficient/exponent numbers, UTF-8 strings. */
+    static long dataSize(Map<String,Object> snapshot){return comparisonJson(snapshot).getBytes(StandardCharsets.UTF_8).length;}
+    private static String comparisonJson(Object value){
+        if(value instanceof Map<?,?> map){var sorted=new TreeMap<String,Object>();map.forEach((k,v)->sorted.put(k.toString(),v));var result=new StringJoiner(",","{","}");sorted.forEach((k,v)->result.add(Json.write(k)+":"+comparisonJson(v)));return result.toString();}
+        if(value instanceof List<?> list){var result=new StringJoiner(",","[","]");list.forEach(v->result.add(comparisonJson(v)));return result.toString();}
+        if(value instanceof Number){var number=new java.math.BigDecimal(value.toString()).stripTrailingZeros();if(number.signum()==0)return "0";String coefficient=number.unscaledValue().toString();long exponent=-(long)number.scale();return exponent==0?coefficient:coefficient+"e"+exponent;}
+        return Json.write(value);
+    }
     private static Map<String,Object> settings(Path root) throws IOException {
         Path path=root.resolve("settings.json"); safe(root,path);
         if(!Files.exists(path)) return new LinkedHashMap<>();

@@ -7,17 +7,18 @@ import java.nio.file.*;
 import java.time.*;
 import java.util.*;
 
-/** v1 interoperable whole-snapshot synchronization. Inspect and execute are separate for conflict UI. */
+/** v1 interoperable whole-snapshot synchronization. Every changed plan requires explicit direction. */
 public final class MobileSync {
     public interface Remote { Fetched read() throws IOException; String write(byte[] bytes,String etag) throws IOException; }
     public static final class Fetched {
-        public final byte[] bytes; public final String etag;
-        public Fetched(byte[] bytes,String etag) {this.bytes=bytes;this.etag=etag;}
+        public final byte[] bytes; public final String etag,modifiedAt;
+        public Fetched(byte[] bytes,String etag) {this(bytes,etag,"");}
+        public Fetched(byte[] bytes,String etag,String modifiedAt) {this.bytes=bytes;this.etag=etag;this.modifiedAt=modifiedAt;}
     }
     public static final class Plan {
-        final String action,localHash,etag,target,localTime,decision; final Map<String,Object> envelope;final int localDecks,remoteDecks;
-        Plan(String action,String localHash,String etag,String target,Map<String,Object> envelope,int localDecks,int remoteDecks,String localTime,String decision){this.action=action;this.localHash=localHash;this.etag=etag;this.target=target;this.envelope=envelope;this.localDecks=localDecks;this.remoteDecks=remoteDecks;this.localTime=localTime;this.decision=decision;}
-        public Map<String,Object> display(){return MobileCompat.map("action",action,"remoteExists",envelope!=null,"contentCheck",etag!=null&&etag.startsWith("sha256:"),"remoteDevice",envelope==null?"":Json.str(envelope,"deviceId"),"remoteTime",envelope==null?"":Json.str(envelope,"createdAt"),"localTime",localTime,"decision",decision,"localInterviewDecks",localDecks,"remoteInterviewDecks",remoteDecks);}
+        final String action,localHash,etag,target; final Map<String,Object> envelope,comparison;
+        Plan(String action,String localHash,String etag,String target,Map<String,Object> envelope,Map<String,Object> comparison){this.action=action;this.localHash=localHash;this.etag=etag;this.target=target;this.envelope=envelope;this.comparison=comparison;}
+        public Map<String,Object> display(){var result=new LinkedHashMap<>(comparison);result.putAll(MobileCompat.map("action",action,"requiresConfirmation",!action.equals("unchanged"),"remoteExists",envelope!=null,"contentCheck",etag!=null&&etag.startsWith("sha256:"),"remoteDevice",envelope==null?"":Json.str(envelope,"deviceId")));return result;}
     }
     private final Store store; private final Path root; private final Remote remote; private final String target,device;
     public MobileSync(Store store,Path root,Remote remote,String target,String device){this.store=store;this.root=root;this.remote=remote;this.target=target;this.device=device;}
@@ -33,43 +34,40 @@ public final class MobileSync {
     }
     private static Map<String,Object> snapshot(Map<String,Object> envelope,Map<String,Object> local){var data=new LinkedHashMap<>(Json.object(envelope.get("data")));var extensions=Json.object(envelope.get("extensions"));data.put("interviews",extensions.containsKey("interviewStudy")?Json.object(extensions.get("interviewStudy")).get("decks"):local.get("interviews"));return data;}
     public Plan inspect() throws IOException {
-        Map<String,Object> local=store.syncExtendedSnapshot();Fetched fetched=remote.read();String baseline=null;
+        Map<String,Object> local=store.syncExtendedSnapshot();Fetched fetched=remote.read();String baseline=null;Map<String,Object> saved=null;
         Path file=root.resolve("sync-baseline-android.json");
-        if(Files.exists(file)) {Map<String,Object> b=Json.object(Json.parse(MobileCompat.readString(file)));if(target.equals(b.get("target")))baseline=Json.str(b,"hash");}
+        if(Files.exists(file)) {Map<String,Object> b=Json.object(Json.parse(MobileCompat.readString(file)));if(target.equals(b.get("target"))){baseline=Json.str(b,"hash");saved=b;}}
         String action;Map<String,Object> envelope=fetched==null?null:envelope(fetched.bytes);
         if(envelope==null)action=baseline==null?"push":"conflict";
         else {String l=SyncStore.hash(Json.object(local.get("snapshot"))),r=SyncStore.hash(snapshot(envelope,Json.object(local.get("snapshot"))));
             action=l.equals(r)?"unchanged":baseline==null?"conflict":l.equals(baseline)?"pull":r.equals(baseline)?"push":"conflict";
-            if(action.equals("unchanged")&&!Json.object(envelope.get("extensions")).containsKey("interviewStudy"))action="push";}
-        int localDecks=Json.array(Json.object(local.get("snapshot")).get("interviews")).size();int remoteDecks=envelope!=null&&Json.object(envelope.get("extensions")).containsKey("interviewStudy")?Json.array(Json.object(Json.object(envelope.get("extensions")).get("interviewStudy")).get("decks")).size():0;
-        return new Plan(action,Json.str(local,"hash"),fetched==null?null:fetched.etag,target,envelope,localDecks,remoteDecks,latestLocalTime(),"");
+            if(action.equals("unchanged")&&Json.array(Json.object(local.get("snapshot")).get("interviews")).size()>0&&!Json.object(envelope.get("extensions")).containsKey("interviewStudy"))action="push";}
+        String baselineText=saved==null?"无历史基线":!(saved.get("dataBytes") instanceof Number)?"上次同步未记录大小":"上次成功同步："+Json.str(saved,"at");
+        Long previous=saved!=null&&saved.get("dataBytes") instanceof Number n?n.longValue():null;
+        var data=Json.object(local.get("snapshot"));var remoteData=envelope==null?null:snapshot(envelope,data);
+        boolean legacy=envelope!=null&&!Json.object(envelope.get("extensions")).containsKey("interviewStudy");
+        String summary=envelope==null?"云端同步包不存在，请确认是否上传本机资料。":switch(action){case "push"->"本机资料发生变化，请选择最终保留的版本。";case "pull"->"云端资料发生变化，请选择最终保留的版本。";case "unchanged"->"两端资料一致，无需同步。";default->"两端资料不同，请选择最终保留的版本。";};
+        Map<String,Object> comparison=MobileCompat.map("local",version(data,Json.str(local,"modifiedAt"),previous),"remote",version(remoteData,fetched==null?"":fetched.modifiedAt,previous),"summary",summary,"baselineText",baselineText,"note",legacy?"云端旧格式未包含面试题库。云端版本的比较大小包含将保留的本机题库；选择下载也会保留这些题库，选择上传会补齐云端扩展。":"");
+        return new Plan(action,Json.str(local,"hash"),fetched==null?null:fetched.etag,target,envelope,comparison);
     }
-    /** Automatic sync uses the baseline; divergent edits always require an explicit choice. */
-    public Plan inspectAuto() throws IOException {
-        // Clock time cannot prove that the other device's independent edits are disposable.
-        return inspect();
+    private static Map<String,Object> version(Map<String,Object> data,String modified,Long previous){
+        long bytes=data==null?0:SyncStore.dataSize(data);String counts=data==null?"":Json.array(data.get("resumes")).size()+" 份简历 / "+Json.array(data.get("favorites")).size()+" 个收藏 / "+Json.array(data.get("applications")).size()+" 条投递 / "+Json.array(data.get("schedule")).size()+" 条日程 / "+Json.array(data.get("interviews")).size()+" 个题库";
+        return MobileCompat.map("exists",data!=null,"dataBytes",bytes,"deltaBytes",data==null||previous==null?null:bytes-previous,"modifiedAt",modified,"counts",counts);
     }
-    private String latestLocalTime() throws IOException {
-        Instant latest=Instant.EPOCH;if(!Files.exists(root))return latest.toString();
-        try(var paths=Files.walk(root,8)){
-            var iterator=paths.iterator();while(iterator.hasNext()){
-                Path path=iterator.next();
-                Path relative=root.relativize(path);if(relative.getNameCount()==0)continue;
-                boolean excluded=false;for(Path part:relative)if(part.toString().startsWith("sync-")){excluded=true;break;}if(excluded)continue;
-                if(!Files.isDirectory(path)&&!path.getFileName().toString().endsWith(".json"))continue;
-                Instant modified=Files.getLastModifiedTime(path).toInstant();if(modified.isAfter(latest))latest=modified;
-            }
-        }
-        return latest.toString();
+    /** Only the configured background job may accept a non-conflicting baseline direction. */
+    public Plan inspectAuto() throws IOException {return inspect();}
+    public String executeAuto(Plan plan) throws IOException {
+        if(plan.action.equals("conflict"))throw new IOException("两端资料均有变化，请打开设置确认保留版本");
+        return execute(plan,plan.action);
     }
     public String execute(Plan plan,String direction) throws IOException {
         if(!plan.target.equals(target))throw new IOException("同步目标改变，请重新检查");
-        String action=plan.action.equals("conflict")?direction:plan.action;
-        if(!Arrays.asList("push","pull","unchanged").contains(action)||(plan.action.equals("conflict")&&action.equals("unchanged")))throw new IOException("请选择保留本机或云端，或取消同步");
+        String action=plan.action.equals("unchanged")?"unchanged":direction;
+        if(action==null||!Arrays.asList("push","pull","unchanged").contains(action)||(!plan.action.equals("unchanged")&&action.equals("unchanged")))throw new IOException("请先确认要保留的版本，再执行同步");
         synchronized(store){
             Map<String,Object> current=store.syncExtendedSnapshot();if(!plan.localHash.equals(current.get("hash")))throw new IOException("本机资料已改变，请重新检查同步");
             Fetched observed=remote.read();if(!Objects.equals(plan.etag,observed==null?null:observed.etag))throw new IOException("云端资料已改变，请重新检查同步");
-            String hash=Json.str(current,"hash"),etag=plan.etag;
+            String hash=Json.str(current,"hash"),etag=plan.etag;long dataBytes=SyncStore.dataSize(Json.object(current.get("snapshot")));
             if(action.equals("push")){
                 Map<String,Object> outgoing=plan.envelope==null?new LinkedHashMap<>():new LinkedHashMap<>(plan.envelope);
                 outgoing.put("protocol","resume-studio-sync");outgoing.put("schemaVersion",1);outgoing.put("snapshotId",UUID.randomUUID().toString());outgoing.put("deviceId",device);outgoing.put("deviceName",BackupCatalog.device(root));outgoing.put("createdAt",Instant.now().toString());
@@ -80,9 +78,11 @@ public final class MobileSync {
                 if(plan.envelope==null)throw new IOException("云端文件不存在，无法下载");
                 Map<String,Object> data=snapshot(plan.envelope,Json.object(current.get("snapshot")));Map<String,Object> result=store.syncImport(plan.localHash,data);hash=Json.str(result,"hash");
                 if(!hash.equals(SyncStore.hash(data)))throw new IOException("导入校验不一致，请检查备份");
+                dataBytes=SyncStore.dataSize(Json.object(result.get("snapshot")));
             }
             Path file=root.resolve("sync-baseline-android.json"),tmp=root.resolve("sync-baseline-android.tmp");
-            MobileCompat.writeString(tmp,Json.write(MobileCompat.map("target",target,"hash",hash,"etag",etag,"at",Instant.now().toString())));Files.move(tmp,file,StandardCopyOption.REPLACE_EXISTING,StandardCopyOption.ATOMIC_MOVE);return action;
+            if(action.equals("unchanged")&&Files.exists(file)){var previous=Json.object(Json.parse(MobileCompat.readString(file)));if(target.equals(previous.get("target"))&&hash.equals(previous.get("hash"))&&Objects.equals(etag,previous.get("etag"))&&previous.get("dataBytes") instanceof Number n&&n.longValue()==dataBytes)return action;}
+            MobileCompat.writeString(tmp,Json.write(MobileCompat.map("target",target,"hash",hash,"etag",etag,"at",Instant.now().toString(),"dataBytes",dataBytes)));Files.move(tmp,file,StandardCopyOption.REPLACE_EXISTING,StandardCopyOption.ATOMIC_MOVE);return action;
         }
     }
     public List<Object> review(Plan plan)throws IOException{return SyncReview.differences(Json.object(store.syncExtendedSnapshot().get("snapshot")),snapshot(plan.envelope,Json.object(store.syncExtendedSnapshot().get("snapshot"))));}
@@ -93,7 +93,7 @@ public final class MobileSync {
             var remoteData=snapshot(plan.envelope,Json.object(current.get("snapshot")));var merged=SyncReview.merge(Json.object(current.get("snapshot")),remoteData,choices);
             Path backups=root.resolve("sync-backups");Files.createDirectories(backups);String backupName="merge-remote-"+UUID.randomUUID()+".json";MobileCompat.writeString(backups.resolve(backupName),Json.write(remoteData));BackupCatalog.info(root,backupName,Json.str(plan.envelope,plan.envelope.containsKey("deviceName")?"deviceName":"deviceId"),"云端合并前");
             var applied=store.syncImport(plan.localHash,merged);
-            return execute(new Plan("push",Json.str(applied,"hash"),plan.etag,plan.target,plan.envelope,plan.localDecks,plan.remoteDecks,plan.localTime,"逐条合并"),"push");
+            return execute(new Plan("push",Json.str(applied,"hash"),plan.etag,plan.target,plan.envelope,plan.comparison),"push");
         }
     }
     public static URI address(String text){
@@ -115,7 +115,7 @@ public final class MobileSync {
             try{return "sha256:"+MobileCompat.hex(java.security.MessageDigest.getInstance("SHA-256").digest(bytes));}
             catch(java.security.NoSuchAlgorithmException ex){throw new IOException("无法校验同步内容",ex);}
         }
-        public Fetched read()throws IOException {MobileHttp.Result r=MobileHttp.request(file,"GET",auth,null,SyncStore.MAX_BYTES);if(r.status==404)return null;ensure(r.status);return new Fetched(r.bytes,isStrong(r.etag)?r.etag:fingerprint(r.bytes));}
+        public Fetched read()throws IOException {MobileHttp.Result r=MobileHttp.request(file,"GET",auth,null,SyncStore.MAX_BYTES);if(r.status==404)return null;ensure(r.status);return new Fetched(r.bytes,isStrong(r.etag)?r.etag:fingerprint(r.bytes),r.modifiedAt);}
         public String write(byte[] bytes,String etag)throws IOException {
             if(bytes.length>SyncStore.MAX_BYTES)throw new IOException("同步包超过 64 MiB");
             Map<String,String> headers=new HashMap<>(auth);headers.put("Content-Type","application/json; charset=utf-8");

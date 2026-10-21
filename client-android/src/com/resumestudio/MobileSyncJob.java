@@ -6,7 +6,7 @@ import java.io.IOException;
 import java.util.*;
 import java.util.concurrent.*;
 
-/** Runs only while Android reports a usable network; conflicts are left for the user. */
+/** Automatically sync single-sided changes; divergent versions require a user choice. */
 public final class MobileSyncJob extends JobService {
     static final int JOB_ID=903;
     private static final long PERIOD=30L*60L*1000L;
@@ -38,13 +38,15 @@ public final class MobileSyncJob extends JobService {
                         if(device.isEmpty()){device=UUID.randomUUID().toString();preferences.edit().putString("deviceId",device).apply();}
                         MobileSync sync=new MobileSync(api.store,api.root,new MobileSync.Dav(directory,user,password),directory+"|"+user,device);
                         MobileSync.Plan plan=sync.inspectAuto();
-                        if(plan.action.equals("conflict"))status="自动同步遇到两端不同修改，请打开设置选择保留方向";
-                        else {String action=sync.execute(plan,null);MobileReminders.reconcile(this);status=switch(action){case "push"->"已自动上传（仅本机变化）";case "pull"->"已自动下载并备份（仅云端变化）";default->"两端资料一致";};}
+                        if(stopped)return;
+                        if(MainActivity.isForeground())status="应用已打开，后台同步已暂停";
+                        else if(plan.action.equals("conflict"))status="自动同步遇到两端不同修改，请打开设置选择保留方向";
+                        else {String action=sync.executeAuto(plan);MobileReminders.reconcile(this);status=switch(action){case "push"->"已自动上传（仅本机变化）";case "pull"->"已自动下载并备份（仅云端变化）";default->"两端资料一致";};}
                     }
                 }
             }catch(Exception ex){status="自动同步未完成："+Objects.toString(ex.getMessage(),"网络或配置异常");}
             if(!stopped)storeStatus(status);
-            jobFinished(params,false);
+            if(!stopped)jobFinished(params,false);
         });
         return true;
     }

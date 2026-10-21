@@ -7,7 +7,7 @@ using System.Xml.Linq;
 
 namespace ResumeStudio.Services;
 
-public sealed record SyncRemote(byte[] Bytes,string ETag);
+public sealed record SyncRemote(byte[] Bytes,string ETag,DateTimeOffset? ModifiedAt=null);
 /// <summary>ETag is an opaque revision: a server ETag or a sha256: content token for compatible DAV services.</summary>
 public interface ISyncRemoteStore
 {
@@ -119,9 +119,9 @@ public sealed class SyncWebDav : ISyncRemoteStore,IDisposable
         using var stream=await response.Content.ReadAsStreamAsync(cancellationToken); using var buffer=new MemoryStream(); byte[] block=new byte[8192];
         int read; while((read=await stream.ReadAsync(block,cancellationToken))>0) { if(buffer.Length+read>SyncProtocol.MaxBytes) throw new IOException("同步包超过 64 MiB。"); await buffer.WriteAsync(block.AsMemory(0,read),cancellationToken); }
         var bytes=buffer.ToArray();var etag=response.Headers.ETag;
-        if(etag is not null&&!etag.IsWeak) return new(bytes,etag.ToString());
+        if(etag is not null&&!etag.IsWeak) return new(bytes,etag.ToString(),response.Content.Headers.LastModified);
         UsesContentHash=true;
-        return new(bytes,ContentRevision(bytes));
+        return new(bytes,ContentRevision(bytes),response.Content.Headers.LastModified);
     }
     public async Task<string> WriteAsync(byte[] bytes,string? expectedETag,CancellationToken cancellationToken)
     {

@@ -9,3 +9,5 @@ $desktop=@(Get-ChildItem "$root\backend\src\main\java" -Filter '*.java' -Recurse
 $dotnet=Join-Path $env:USERPROFILE '.dotnet\dotnet.exe';if(!(Test-Path $dotnet)){$dotnet=(Get-Command dotnet).Source}
 & $dotnet run --project "$root\tests\AndroidSync.Tests\AndroidSync.Tests.csproj" -c Release -- $root
 if($LASTEXITCODE){throw 'Android / Windows sync interoperability failed'}
+& node (Join-Path $root 'tests/android/SyncDialog.Tests.js')
+if($LASTEXITCODE){throw 'Android version comparison dialog failed'}

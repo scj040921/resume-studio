@@ -8,13 +8,17 @@ import java.util.*;
 /** Line-oriented test adapter for the actual Android data/sync classes, running on the host JVM. */
 public final class MobileInterop {
     public static void main(String[] args)throws Exception{
+        System.setOut(new PrintStream(System.out,true,StandardCharsets.UTF_8));
         Path root=Paths.get(new String(Base64.getDecoder().decode(args[0]),StandardCharsets.UTF_8));MobileApi api=new MobileApi(root);
         MobileSync sync=new MobileSync(api.store,root,new MobileSync.Dav(args[1],"user","password"),args[1],"android-test");MobileSync.Plan plan=null;
         BufferedReader input=new BufferedReader(new InputStreamReader(System.in,StandardCharsets.UTF_8));String line;
         while((line=input.readLine())!=null){try{var r=Json.object(Json.parse(line));String method=Json.str(r,"method");Object result;
             switch(method){
                 case "inspect":plan=sync.inspect();result=plan.display();break;
+                case "cancel":plan=null;result=true;break;
+                case "size":result=SyncStore.dataSize(Json.object(r.get("snapshot")));break;
                 case "inspectAuto":plan=sync.inspectAuto();result=plan.display();break;
+                case "executeAuto":result=sync.executeAuto(Objects.requireNonNull(plan));break;
                 case "reviewSync":result=sync.review(Objects.requireNonNull(plan));break;
                 case "mergeSync":result=sync.merge(Objects.requireNonNull(plan),Json.object(r.get("choices")));break;
                 case "execute":result=sync.execute(Objects.requireNonNull(plan),Json.str(r,"direction"));break;

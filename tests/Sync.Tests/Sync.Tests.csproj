@@ -1,4 +1,5 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup><OutputType>Exe</OutputType><TargetFramework>net8.0</TargetFramework><ImplicitUsings>enable</ImplicitUsings><Nullable>enable</Nullable></PropertyGroup>
   <ItemGroup><Compile Include="../../client-winui/Services/SyncProtocol.cs" Link="SyncProtocol.cs"/><Compile Include="../../client-winui/Services/SyncWebDav.cs" Link="SyncWebDav.cs"/><Compile Include="../../client-winui/Services/SyncCoordinator.cs" Link="SyncCoordinator.cs"/><Compile Include="../../client-winui/Models.cs" Link="Models.cs"/><Compile Include="../../client-winui/Services/BackendClient.cs" Link="BackendClient.cs"/></ItemGroup>
+  <ItemGroup><Compile Include="../../client-winui/Services/SyncComparison.cs" Link="SyncComparison.cs"/><Compile Include="../../client-winui/Services/AppPreferences.cs" Link="AppPreferences.cs"/></ItemGroup>
 </Project>

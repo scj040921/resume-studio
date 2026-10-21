@@ -13,10 +13,10 @@ public final class Store {
     private final ResumeHistory history;
     public Store(Path root) throws IOException { this.root=root.toAbsolutePath().normalize(); Files.createDirectories(this.root); SyncStore.recover(this.root); history=new ResumeHistory(this.root); }
     public synchronized Map<String,Object> syncSnapshot() throws IOException {
-        var snapshot=SyncStore.snapshot(root,this); return Map.of("snapshot",snapshot,"hash",SyncStore.hash(snapshot));
+        var snapshot=SyncStore.snapshot(root,this); return Map.of("snapshot",snapshot,"hash",SyncStore.hash(snapshot),"modifiedAt",SyncStore.modifiedAt(root,snapshot));
     }
     public synchronized Map<String,Object> syncExtendedSnapshot() throws IOException {
-        var snapshot=SyncStore.extendedSnapshot(root,this); return Map.of("snapshot",snapshot,"hash",SyncStore.hash(snapshot));
+        var snapshot=SyncStore.extendedSnapshot(root,this); return Map.of("snapshot",snapshot,"hash",SyncStore.hash(snapshot),"modifiedAt",SyncStore.modifiedAt(root,snapshot));
     }
     public synchronized Map<String,Object> syncImport(String expectedHash,Map<String,Object> snapshot) throws IOException { return SyncStore.replace(root,this,expectedHash,snapshot); }
     private Path path(String kind,String id) throws IOException {

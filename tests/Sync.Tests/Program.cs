@@ -8,6 +8,8 @@ static async Task Throws(Func<Task> action,string label) { try { await action();
 static JsonObject Data(string title="") => JsonNode.Parse("{\"resumes\":[],\"favorites\":[],\"applications\":[],\"sources\":[],\"schedule\":[],\"history\":[],\"settings\":{}}")!.AsObject().WithTitle(title);
 var local=Data("one"); var remote=Data("two");
 ModelRoundTrip.Verify();
+await ConfirmationCoverage.RunAsync();
+await ComparisonCoverage.RunAsync();
 await MergeCoverage.RunAsync();
 await DirectoryCoverage.RunAsync();
 await AutoCreateCoverage.RunAsync();

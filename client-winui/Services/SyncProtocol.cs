@@ -59,11 +59,27 @@ public static class SyncProtocol
         if(element.ValueKind==JsonValueKind.Object) { var names=new HashSet<string>(StringComparer.Ordinal); foreach(var property in element.EnumerateObject()) { if(!names.Add(property.Name)) throw new IOException("同步 JSON 包含重复字段。"); CheckDuplicates(property.Value); } }
         else if(element.ValueKind==JsonValueKind.Array) foreach(var item in element.EnumerateArray()) CheckDuplicates(item);
     }
-    public static string Hash(JsonNode data)
+    private static byte[] CanonicalBytes(JsonNode data)
     {
         using var document=JsonDocument.Parse(data.ToJsonString()); using var buffer=new MemoryStream();
         using(var writer=new Utf8JsonWriter(buffer)) Canonical(writer,document.RootElement);
-        return Convert.ToHexString(SHA256.HashData(buffer.ToArray())).ToLowerInvariant();
+        return buffer.ToArray();
+    }
+    public static string Hash(JsonNode data)=>Convert.ToHexString(SHA256.HashData(CanonicalBytes(data))).ToLowerInvariant();
+    // Comparison bytes have a shared Java/C# definition; existing revision hashes stay unchanged.
+    public static long DataSize(JsonNode data)
+    {
+        using var document=JsonDocument.Parse(data.ToJsonString());var text=new System.Text.StringBuilder();
+        void String(string value) {text.Append('"');foreach(char c in value)text.Append(c switch {'"'=>"\\\"",'\\'=>"\\\\",'\n'=>"\\n",'\r'=>"\\r",'\t'=>"\\t",< ' '=>"\\u"+((int)c).ToString("x4",CultureInfo.InvariantCulture),_=>c.ToString()});text.Append('"');}
+        void Write(JsonElement element)
+        {
+            if(element.ValueKind==JsonValueKind.Object) {text.Append('{');bool first=true;foreach(var p in element.EnumerateObject().OrderBy(p=>p.Name,StringComparer.Ordinal)){if(!first)text.Append(',');first=false;String(p.Name);text.Append(':');Write(p.Value);}text.Append('}');}
+            else if(element.ValueKind==JsonValueKind.Array) {text.Append('[');bool first=true;foreach(var v in element.EnumerateArray()){if(!first)text.Append(',');first=false;Write(v);}text.Append(']');}
+            else if(element.ValueKind==JsonValueKind.String)String(element.GetString()!);
+            else if(element.ValueKind==JsonValueKind.Number)text.Append(CanonicalNumber(element.GetRawText()));
+            else text.Append(element.GetRawText());
+        }
+        Write(document.RootElement);return System.Text.Encoding.UTF8.GetByteCount(text.ToString());
     }
     private static void Canonical(Utf8JsonWriter writer,JsonElement element)
     {
