@@ -24,7 +24,7 @@ public sealed partial class MainWindow
         int generation=navigationRevision;
         Heading("面试题背诵","一次专注一道题，记录掌握情况；题库和进度自动保存在本机。");
         var decks=await api.Get<List<InterviewDeck>>("interviews");if(!PageIsCurrent("interviews",generation))return;
-        decks=decks.OrderBy(d=>d.Title).ToList();
+        decks=decks.Where(d=>d.StudyType!="exam").OrderBy(d=>d.Title).ToList();
         body.RowDefinitions.Add(new RowDefinition {Height=GridLength.Auto});body.RowDefinitions.Add(new RowDefinition {Height=new GridLength(1,GridUnitType.Star)});body.RowDefinitions.Add(new RowDefinition {Height=GridLength.Auto});
         var tools=Stack(9);var toolbar=Row();toolbar.Children.Add(Button("＋ 导入题目文档",ImportInterviews,true));
         var select=new ComboBox {Header="题库",ItemsSource=decks,MinWidth=200,MaxWidth=360,Tag="interview-deck"};
@@ -75,21 +75,21 @@ public sealed partial class MainWindow
     private async Task ImportInterviews()
     {
         var picker=new FileOpenPicker();foreach(string extension in new[]{".md",".markdown",".txt",".docx",".pdf"})picker.FileTypeFilter.Add(extension);InitPicker(picker);
-        var file=await picker.PickSingleFileAsync();if(file is not null)await ImportInterviewFile(file.Path);
+        var file=await picker.PickSingleFileAsync();if(file is not null)await ImportInterviewFile(file.Path,"interview");
     }
-    private async Task ImportInterviewFile(string path)
+    private async Task ImportInterviewFile(string path,string studyType="interview")
     {
         var document=await Task.Run(()=>InterviewImport.Read(path));var content=Stack(12);
-        var name=new TextBox {Header="题库名称",Text=Path.GetFileNameWithoutExtension(document.SourceName),MaxLength=200};content.Children.Add(name);
+        var name=new TextBox {Header=studyType=="exam"?"复盘名称":"题库名称",Text=Path.GetFileNameWithoutExtension(document.SourceName),MaxLength=200};content.Children.Add(name);
         int[] levels=[0,..document.HeadingLevels];var mode=new ComboBox {Header="拆分方式",ItemsSource=levels.Select(l=>l==0?"自动识别小标题":$"按 {l} 级标题拆分").ToList(),SelectedIndex=0,HorizontalAlignment=HorizontalAlignment.Stretch};content.Children.Add(mode);
         var summary=Text("",12);content.Children.Add(summary);var titles=new ListView {Height=160,SelectionMode=ListViewSelectionMode.Single,Tag="interview-import-titles"};content.Children.Add(titles);
         var excerpt=new TextBox {Header="选中题目的正文预览",IsReadOnly=true,AcceptsReturn=true,TextWrapping=TextWrapping.Wrap,Height=150};content.Children.Add(excerpt);
         content.Children.Add(Text("只保存提取的题目文字；原文档不会复制进软件。题库和掌握进度仅保存在本机。",11));
-        var dialog=new ContentDialog {XamlRoot=shell.XamlRoot,Title="导入面试题",Content=new ScrollViewer {Content=content,MaxHeight=570},PrimaryButtonText="导入题库",CloseButtonText="取消",DefaultButton=ContentDialogButton.Primary};List<InterviewQuestion> questions=[];
+        var dialog=new ContentDialog {XamlRoot=shell.XamlRoot,Title=studyType=="exam"?"导入笔试题":"导入面试题",Content=new ScrollViewer {Content=content,MaxHeight=570},PrimaryButtonText=studyType=="exam"?"创建复盘":"导入题库",CloseButtonText="取消",DefaultButton=ContentDialogButton.Primary};List<InterviewQuestion> questions=[];
         void Refresh(){try {questions=InterviewImport.Split(document,levels[Math.Max(0,mode.SelectedIndex)]);titles.ItemsSource=questions.Select(q=>q.Title).ToList();titles.SelectedIndex=0;summary.Text=$"识别出 {questions.Count} 道题 · {document.Rule} · "+(document.HeadingLevels.Length==0?"未发现小标题，将全文作为一张卡片。":$"当前按 { (levels[mode.SelectedIndex]==0?InterviewImport.AutoLevel(document):levels[mode.SelectedIndex]) } 级标题拆分。请检查题目是否对应。" );dialog.IsPrimaryButtonEnabled=!string.IsNullOrWhiteSpace(name.Text);}catch(IOException ex){questions=[];titles.ItemsSource=null;excerpt.Text="";summary.Text=ex.Message;dialog.IsPrimaryButtonEnabled=false;}}
         titles.SelectionChanged+=(_,_)=>excerpt.Text=titles.SelectedIndex>=0&&titles.SelectedIndex<questions.Count?questions[titles.SelectedIndex].Answer:"";
         mode.SelectionChanged+=(_,_)=>Refresh();name.TextChanged+=(_,_)=>dialog.IsPrimaryButtonEnabled=questions.Count>0&&!string.IsNullOrWhiteSpace(name.Text);Refresh();
         if(await dialog.ShowAsync()!=ContentDialogResult.Primary)return;
-        var saved=await api.Save("interviews",new InterviewDeck {Title=name.Text.Trim(),SourceName=document.SourceName,Questions=questions});interviewDeckId=saved.Id;interviewFilter="all";interviewIndex=0;await Navigate("interviews");Success("题库已导入",$"{saved.Title} · {saved.Questions.Count} 道题。进度会自动保存到本机。");
+        var saved=await api.Save("interviews",new InterviewDeck {Title=name.Text.Trim(),SourceName=document.SourceName,StudyType=studyType,Questions=questions});interviewDeckId=saved.Id;interviewFilter="all";interviewIndex=0;await Navigate(studyType=="exam"?"exams":"interviews");Success(studyType=="exam"?"笔试复盘已创建":"题库已导入",$"{saved.Title} · {saved.Questions.Count} 道题。进度会自动保存到本机。");
     }
 }

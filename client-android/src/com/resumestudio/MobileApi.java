@@ -98,8 +98,8 @@ public final class MobileApi {
             case "schedule":copyFields(doc,patch,"title,kind,startAt,notes,applicationId,allDay,completed,reminderEnabled,reminderMinutes");break;
             case "sources":copyFields(doc,patch,"name,adapter,slug,url,enabled,region");break;
             case "interviews":{
-                copyFields(doc,patch,"title,sourceName,lastQuestionId");var old=Json.array(previous.getOrDefault("questions",Collections.emptyList()));var questions=new ArrayList<>();
-                for(Object v:Json.array(patch.get("questions"))){var q=Json.object(v);var saved=old.stream().map(Json::object).filter(s->Json.str(s,"id").equals(Json.str(q,"id"))).findFirst().orElse(new LinkedHashMap<>());var copy=new LinkedHashMap<>(saved);copyFields(copy,q,"id,title,answer,status,reviewedAt,reviewCount,intervalDays,nextReviewAt");questions.add(copy);}doc.put("questions",questions);break;
+                copyFields(doc,patch,"title,sourceName,lastQuestionId,studyType");var old=Json.array(previous.getOrDefault("questions",Collections.emptyList()));var questions=new ArrayList<>();
+                for(Object v:Json.array(patch.get("questions"))){var q=Json.object(v);var saved=old.stream().map(Json::object).filter(s->Json.str(s,"id").equals(Json.str(q,"id"))).findFirst().orElse(new LinkedHashMap<>());var copy=new LinkedHashMap<>(saved);copyFields(copy,q,"id,title,answer,status,reviewedAt,reviewCount,intervalDays,nextReviewAt,reviewNote");questions.add(copy);}doc.put("questions",questions);break;
             }
             default:throw new IllegalArgumentException("集合无效");
         }

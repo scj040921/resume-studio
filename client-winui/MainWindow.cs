@@ -57,6 +57,7 @@ public sealed partial class MainWindow : Window
         Activated+=(_,_)=> { if(haruStyle) NativeWindowGlass.Enable(WinRT.Interop.WindowNative.GetWindowHandle(this),darkStyle); };
         shell.Loaded+=async (_,_)=>await Run(Initialize);
         editTimer.Tick+=async (_,_)=> { editTimer.Stop(); await Run(SaveCurrent); };
+        examSaveTimer.Tick+=async (_,_)=> { examSaveTimer.Stop(); await Run(FlushExamDraft); };
         previewTimer.Tick+=async (_,_)=> { previewTimer.Stop(); if(currentPage=="editor") await Run(RenderPreview); };
         reminderTimer.Tick+=async (_,_)=>await Run(CheckApplicationReminders);
         systemSettings.ColorValuesChanged+=(_,_)=>DispatcherQueue.TryEnqueue(()=> { if(preferences.InterfaceStyle=="haru"&&preferences.Theme=="system") _=Run(ApplyPreferences); });
@@ -68,7 +69,7 @@ public sealed partial class MainWindow : Window
             closeRequested=true;
             _=Run(async ()=>
             {
-                try { await FinishSyncBeforeClose(); editTimer.Stop(); previewTimer.Stop(); reminderTimer.Stop(); feedbackTimer.Stop(); CancelJobSearch(); await SaveCurrent();await DetachPreviewAsync(true);await api.StopAsync();closing=true;updateCancellation.Cancel();api.Dispose();Close(); }
+                try { await FinishSyncBeforeClose(); editTimer.Stop(); previewTimer.Stop(); examSaveTimer.Stop(); reminderTimer.Stop(); feedbackTimer.Stop(); CancelJobSearch(); if(currentPage=="exams")await FlushExamDraft(); await SaveCurrent();await DetachPreviewAsync(true);await api.StopAsync();closing=true;updateCancellation.Cancel();api.Dispose();Close(); }
                 finally { if(!closing) closeRequested=false; }
             });
         };
@@ -93,7 +94,13 @@ public sealed partial class MainWindow : Window
     private async Task Run(Func<Task> action)
     {
         try { await action(); }
-        catch(Exception ex) { notice.Title="操作未完成"; notice.Message=string.IsNullOrWhiteSpace(ex.Message)?$"{ex.GetType().Name}（0x{ex.HResult:X8}）":ex.Message; notice.Severity=InfoBarSeverity.Error; notice.IsOpen=true; }
+        catch(Exception ex)
+        {
+            if(VerificationSession&&Environment.GetEnvironmentVariable("RESUMESTUDIO_TEST_OUTPUT") is {Length:>0} output)
+                try{Directory.CreateDirectory(output);File.AppendAllText(Path.Combine(output,"verification-errors.log"),ex+Environment.NewLine+Environment.NewLine);}
+                catch(IOException) { }
+            notice.Title="操作未完成"; notice.Message=string.IsNullOrWhiteSpace(ex.Message)?$"{ex.GetType().Name}（0x{ex.HResult:X8}）":ex.Message; notice.Severity=InfoBarSeverity.Error; notice.IsOpen=true;
+        }
     }
     private async Task Initialize()
     {
@@ -105,7 +112,8 @@ public sealed partial class MainWindow : Window
         AppWindow.Resize(new Windows.Graphics.SizeInt32(Math.Min((int)(1440*scale),area.Width-80),Math.Min((int)(920*scale),area.Height-60)));
         await api.StartAsync(); Mark("backendReady"); ready=true; saveState.Text="本地服务已连接";
         reminderTimer.Start(); await CheckApplicationReminders();
-        if(templates.Count==0) { templates=await api.Get<List<Template>>("templates"); await Navigate("templates"); Mark("firstPageReady"); }
+        if(templates.Count==0) templates=await api.Get<List<Template>>("templates");
+        await Navigate("home"); Mark("firstPageReady");
         await AcknowledgeUpdateStartup();
         if(!VerificationSession)_=Run(MaintainStorageAfterStartup);
         if(!VerificationSession&&preferences.CheckUpdatesOnStartup) _=Run(()=>CheckForUpdates(true));
@@ -149,7 +157,7 @@ public sealed partial class MainWindow : Window
         await pageTransitionLock.WaitAsync();
         try
         {
-            editTimer.Stop(); previewTimer.Stop(); CancelJobSearch(); await SaveCurrent();
+            editTimer.Stop(); previewTimer.Stop(); CancelJobSearch(); if(currentPage=="exams")await FlushExamDraft(); await SaveCurrent();
             if(version!=navigationRevision) return;
             currentPage=page; notice.IsOpen=false;
             await DetachPreviewAsync(true);
@@ -158,6 +166,7 @@ public sealed partial class MainWindow : Window
             UpdateNavigation(page);
             switch(page)
             {
+                case "home": await ShowHome(); break;
                 case "templates": ShowTemplates(); break;
                 case "resumes": await ShowResumes(); break;
                 case "jobs": await ShowJobs(); break;
@@ -166,6 +175,7 @@ public sealed partial class MainWindow : Window
                 case "applications": await ShowApplications(); break;
                 case "schedule": await ShowSchedule(); break;
                 case "interviews": await ShowInterviews(); break;
+                case "exams": await ShowExamReviews(); break;
                 case "settings": ShowSettings(); break;
                 default: ShowAbout(); break;
             }

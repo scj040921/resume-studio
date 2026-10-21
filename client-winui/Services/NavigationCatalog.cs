@@ -10,6 +10,7 @@ public static class NavigationCatalog
 {
     public static IReadOnlyList<NavigationNode> Roots { get; } = new NavigationNode[]
     {
+        new("home", "求职首页", "\uE80F"),
         new("templates", "模板中心", "\uE8A5"),
         new("resumes", "我的简历", "\uE8A5"),
         new("discovery", "发现职位", "\uE721", false,
@@ -19,6 +20,7 @@ public static class NavigationCatalog
         new("applications", "投递记录", "\uE73E"),
         new("schedule", "求职日程", "\uE787"),
         new("interviews", "面试题背诵", "\uE82D"),
+        new("exams", "笔试题复盘", "\uE9D9"),
         new("about", "使用说明", "\uE946", true),
         new("settings", "设置", "\uE713", true)
     };

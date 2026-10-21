@@ -14,12 +14,14 @@ public sealed class InterviewQuestion
     public int ReviewCount {get;set;}
     public int IntervalDays {get;set;}
     public string NextReviewAt {get;set;}="";
+    public string ReviewNote {get;set;}="";
 }
 public sealed class InterviewDeck
 {
     [JsonExtensionData] public Dictionary<string,JsonElement>? ExtensionData {get;set;}
     public string Id {get;set;}=Guid.NewGuid().ToString();
     public string Title {get;set;}="";
+    public string StudyType {get;set;}="interview";
     public string SourceName {get;set;}="";
     public string LastQuestionId {get;set;}="";
     public string UpdatedAt {get;set;}="";
