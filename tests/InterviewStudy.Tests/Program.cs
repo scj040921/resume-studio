@@ -84,6 +84,11 @@ Check(examQuestions[6].Answer.Contains(longExamStem)&&examQuestions[6].Answer.Co
 Check(examQuestions[9].Title=="理解中断流程"&&examQuestions[10].Answer.Contains("正文二"),"explicit subquestion headings remain recognized alongside inferred exam numbers");
 Check(InterviewImport.AutoLevel(new("exam.docx",[new("一、选择题",2),new("二、填空题",2),new("理解指针",3),new("理解数组",3),new("三、简答题",2)]))==3,"exam category counts cannot override explicit subquestion headings");
 Check(InterviewImport.Split(examDocument,2).Count==6,"manual exam section-level splitting remains available");
+var legacyExamQuestion=new InterviewQuestion {Title="3、自定义函数实现字符串拼接",Answer="四、编程题（每题10分，共30分）\r\n  for (int i=0; i<3; i++) {}\r\n下一行代码",ReviewNote="已有复盘"};
+var examPresentation=InterviewImport.ExamPresentation(legacyExamQuestion);
+Check(examPresentation.Section=="四、编程题（每题10分，共30分）"&&examPresentation.Title==legacyExamQuestion.Title&&examPresentation.Content=="  for (int i=0; i<3; i++) {}\n下一行代码"&&legacyExamQuestion.Answer.StartsWith("四、编程题")&&legacyExamQuestion.ReviewNote=="已有复盘","existing exam cards expose section, subquestion and indented content separately without rewriting saved data");
+Check(InterviewImport.ExamPresentation(new(){Title="3、实现字符串拼接",Answer="四、编程题（每题10分，共30分）"}).Content=="","title-only subquestions have no duplicate section in their content");
+Check(InterviewImport.ExamPresentation(new(){Title="普通题目",Answer="四、这是答案中的步骤\n保留内容"})==("","普通题目","四、这是答案中的步骤\n保留内容"),"ordinary answer lists are not promoted to exam section headings");
 string? actualExam=Environment.GetEnvironmentVariable("RESUMESTUDIO_EXAM_DOCUMENT");
 if(!string.IsNullOrWhiteSpace(actualExam)){
     var actual=InterviewImport.Split(InterviewImport.Read(actualExam));

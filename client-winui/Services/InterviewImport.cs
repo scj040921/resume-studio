@@ -76,6 +76,15 @@ public static partial class InterviewImport
         return (questions.Count>0?questions:headings).GroupBy(b=>b.Level)
             .OrderByDescending(g=>g.Count(b=>StrongQuestion(b.Text))).ThenByDescending(g=>g.Count(b=>QuestionTitle(b.Text))).ThenByDescending(g=>g.Count()).ThenBy(g=>g.Key).Select(g=>g.Key).FirstOrDefault();
     }
+    public static (string Section,string Title,string Content) ExamPresentation(InterviewQuestion question)
+    {
+        // Earlier imports stored the section heading as the first answer line.
+        // Project it into a heading without rewriting saved questions or review notes.
+        string text=question.Answer.ReplaceLineEndings("\n").TrimStart('\n');int newline=text.IndexOf('\n');
+        string first=(newline<0?text:text[..newline]).Trim();
+        if(first.Length<=120&&first!=question.Title.Trim()&&ExamSection().IsMatch(first))return(first,question.Title,newline<0?"":text[(newline+1)..].TrimStart('\n'));
+        return("",question.Title,question.Answer);
+    }
     public static List<InterviewQuestion> Split(InterviewImportDocument document,int level=0)
     {
         if(level==0)level=AutoLevel(document);

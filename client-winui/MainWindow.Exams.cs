@@ -46,9 +46,11 @@ public sealed partial class MainWindow
             if(selected is null||count==0){host.Child=Card(Text("导入 Markdown、TXT、DOCX 或 PDF 笔试题，按标题拆分后逐题复盘。",16));pageButtons.Children.Clear();return;}
             examQuestionIndex=Math.Clamp(examQuestionIndex,0,count-1);var q=selected.Questions[examQuestionIndex];
             var card=Stack(14);card.Children.Add(Text($"第 {examQuestionIndex+1} / {count} 题  ·  {(q.Status=="remembered"?"已复盘":q.Status=="learning"?"需要再练":"待复盘")}",12,true));
-            var title=Text(q.Title,23,true);title.IsTextSelectionEnabled=true;card.Children.Add(title);
+            var presentation=InterviewImport.ExamPresentation(q);
+            if(presentation.Section.Length>0){var section=Text(presentation.Section,23,true);section.IsTextSelectionEnabled=true;section.Tag="exam-section-title";card.Children.Add(section);}
+            var title=Text(presentation.Title,presentation.Section.Length>0?18:23,true);title.IsTextSelectionEnabled=true;title.Tag="exam-question-title";card.Children.Add(title);
             // Enable multiline before assigning text; WinUI otherwise keeps only its first line.
-            var prompt=new TextBox {Header="题目内容",IsReadOnly=true,AcceptsReturn=true,Text=q.Answer,TextWrapping=TextWrapping.Wrap,MinHeight=100,MaxHeight=210,IsSpellCheckEnabled=false,Tag="exam-question-content"};card.Children.Add(prompt);
+            if(!string.IsNullOrWhiteSpace(presentation.Content)){var prompt=new TextBox {Header="题目内容",IsReadOnly=true,AcceptsReturn=true,Text=presentation.Content,TextWrapping=TextWrapping.Wrap,MinHeight=100,MaxHeight=210,IsSpellCheckEnabled=false,Tag="exam-question-content"};card.Children.Add(prompt);}
             var note=new TextBox {Header="本题复盘",AcceptsReturn=true,Text=q.ReviewNote,PlaceholderText="记录作答过程、错因、遗漏知识、正确思路和下次改进……",TextWrapping=TextWrapping.Wrap,MinHeight=160,MaxLength=20000,Tag="exam-review-note"};card.Children.Add(note);
             var saveState=Text("复盘内容尚未保存",11);examSaveStatus=saveState;card.Children.Add(saveState);
             bool saving=false;async Task Save(string status)

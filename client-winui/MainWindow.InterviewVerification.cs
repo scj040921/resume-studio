@@ -95,8 +95,17 @@ public sealed partial class MainWindow
             var examPicker=InteractionElement<ComboBox>(body,c=>c.Tag?.ToString()=="exam-deck")!;
             Check(((examPicker.SelectedItem as ComboBoxItem)?.Tag as InterviewDeck)?.Id==newExam.Id&&InteractionElement<TextBlock>(body,t=>t.Tag?.ToString()=="exam-position")!.Text==$"1 / {examTotal}","visible exam selector and card counter match the imported deck instead of the old four-card deck");
             Check(examPicker.Items.Cast<ComboBoxItem>().Any(i=>i.Content?.ToString()==$"{oldExam.Title} · 4 题")&&examPicker.Items.Cast<ComboBoxItem>().Any(i=>i.Content?.ToString()==$"{newExam.Title} · {examTotal} 题"),"same-name exam decks display their separate question counts");
-            Check(InteractionElement<TextBox>(body,t=>t.Tag?.ToString()=="exam-question-content")!.Text.ReplaceLineEndings("\n")==newExam.Questions[0].Answer.ReplaceLineEndings("\n"),"visible exam content retains every line of the imported question and choices");
+            var sectionTitle=InteractionElement<TextBlock>(body,t=>t.Tag?.ToString()=="exam-section-title")!;var questionTitle=InteractionElement<TextBlock>(body,t=>t.Tag?.ToString()=="exam-question-title")!;var questionContent=InteractionElement<TextBox>(body,t=>t.Tag?.ToString()=="exam-question-content")!;
+            double ExamTop(FrameworkElement element)=>element.TransformToVisual(body).TransformPoint(new Windows.Foundation.Point()).Y;
+            Check(sectionTitle.Text.StartsWith("一、选择题")&&questionTitle.Text==newExam.Questions[0].Title&&sectionTitle.FontSize>questionTitle.FontSize&&ExamTop(sectionTitle)<ExamTop(questionTitle)&&ExamTop(questionTitle)<ExamTop(questionContent),"exam section heading appears above its smaller subquestion heading and question body");
+            Check(questionContent.Text.ReplaceLineEndings("\n")==newExam.Questions[0].Answer.ReplaceLineEndings("\n").Split('\n',2)[1],"question body keeps all choices and lines while its section heading is displayed separately");
             await SaveNativePreview(Path.Combine(output,"exam-import-active.png"));
+            if(!string.IsNullOrWhiteSpace(actualExam)){
+                examQuestionIndex=examTotal-1;await Navigate("exams");await WaitForExamLayout();
+                sectionTitle=InteractionElement<TextBlock>(body,t=>t.Tag?.ToString()=="exam-section-title")!;questionTitle=InteractionElement<TextBlock>(body,t=>t.Tag?.ToString()=="exam-question-title")!;
+                Check(sectionTitle.Text.StartsWith("四、编程题")&&questionTitle.Text.StartsWith("3、")&&ExamTop(sectionTitle)<ExamTop(questionTitle)&&InteractionElement<TextBox>(body,t=>t.Tag?.ToString()=="exam-question-content") is null,"the actual last question shows the programming section above subquestion three without an empty duplicate content box");
+                await SaveNativePreview(Path.Combine(output,"exam-heading-hierarchy.png"));examQuestionIndex=0;await Navigate("exams");await WaitForExamLayout();
+            }
             await Click("下一题 →");Check(InteractionElement<TextBlock>(body,t=>t.Tag?.ToString()=="exam-position")!.Text==$"2 / {examTotal}","newly imported exam advances within its full card set");
             await Navigate("templates");await Navigate("exams");await WaitForExamLayout();Check(examDeckId==newExam.Id,"returning to exam reviews keeps the newly imported deck selected");
             var multiNote=InteractionElement<TextBox>(body,t=>t.Tag?.ToString()=="exam-review-note")!;multiNote.Text="复盘第一行\n复盘第二行";await FlushExamDraft();
