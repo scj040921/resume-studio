@@ -15,6 +15,7 @@ public sealed partial class MainWindow
         Directory.CreateDirectory(output);var checks=new List<string>();
         void Check(bool ok,string name){if(!ok)throw new Exception(name);checks.Add(name);}
         async Task Click(string label){var button=FeatureButton(body,label)??throw new Exception("Action missing: "+label);((IInvokeProvider)new ButtonAutomationPeer(button).GetPattern(PatternInterface.Invoke)).Invoke();await Task.Delay(180);}
+        async Task WaitForExamLayout(){for(int attempt=0;attempt<100;attempt++){body.UpdateLayout();if(InteractionElement<ComboBox>(body,c=>c.Tag?.ToString()=="exam-deck") is not null&&FeatureButton(body,"删除复盘题库") is not null)return;await Task.Delay(50);}throw new Exception("Exam page did not finish native layout");}
         try {
             await api.Save("favorites",new Job {Id="compact-neighbor",Title="嵌入式测试工程师",Company="测试公司",Location="广州",Source="BOSS直聘",Url="https://example.com/neighbor"});
             await api.Save("favorites",new Job {Id="compact",Title="嵌入式软件工程师",Company="公司名称\n测试公司",Location="深圳",Source="BOSS直聘",Salary="15–20K",Url="https://example.com/compact",Description=string.Join("\n",Enumerable.Repeat("工作职责与任职资格：开发、调试、测试及文档。",30))});
@@ -79,6 +80,40 @@ public sealed partial class MainWindow
             Check(interviewDeckId==savedId&&InteractionElement<TextBlock>(body,t=>t.Tag?.ToString()=="interview-stats")!.Text.Contains("未掌握 2"),"returning to study restores saved verdicts and statistics");
             var answer=InteractionElement<ToggleSwitch>(body,t=>t.Header?.ToString()=="显示答案")!;answer.IsOn=false;await Task.Delay(100);answer.IsOn=true;
             Check(body.KeyboardAccelerators.Count==2,"question page exposes both direction shortcuts");
+            string? actualExam=Environment.GetEnvironmentVariable("RESUMESTUDIO_EXAM_DOCUMENT");
+            string examFile=string.IsNullOrWhiteSpace(actualExam)?Path.Combine(fixtures,"exam-mixed-numbering.docx"):actualExam;
+            int examTotal=string.IsNullOrWhiteSpace(actualExam)?11:29;
+            var oldExam=await api.Save("interviews",new InterviewDeck {Title=Path.GetFileNameWithoutExtension(examFile),StudyType="exam",Questions=Enumerable.Range(1,4).Select(i=>new InterviewQuestion {Title="旧题 "+i,ReviewNote="旧复盘记录"}).ToList()});
+            examDeckId=oldExam.Id;await Navigate("exams");await WaitForExamLayout();
+            Check(InteractionElement<TextBlock>(body,t=>t.Tag?.ToString()=="exam-position")!.Text=="1 / 4","exam regression begins with a selected four-card deck");
+            var examImport=ImportInterviewFile(examFile,"exam");var examDialog=await FeatureDialog("导入笔试题");
+            var examTitles=InteractionElement<ListView>(examDialog,l=>l.Tag?.ToString()=="interview-import-titles")!;
+            Check(examTitles.Items.Count==examTotal&&examDialog.IsPrimaryButtonEnabled,"exam preview identifies every expected subquestion");
+            await FeatureClick(examDialog,"创建复盘");await examImport;await WaitForExamLayout();
+            var newExam=(await api.Get<List<InterviewDeck>>("interviews")).Single(d=>d.Id==examDeckId);
+            Check(newExam.Id!=oldExam.Id&&newExam.Questions.Count==examTotal&&interviewDeckId==savedId,"creating an exam selects the new complete deck without changing the interview deck");
+            var examPicker=InteractionElement<ComboBox>(body,c=>c.Tag?.ToString()=="exam-deck")!;
+            Check(((examPicker.SelectedItem as ComboBoxItem)?.Tag as InterviewDeck)?.Id==newExam.Id&&InteractionElement<TextBlock>(body,t=>t.Tag?.ToString()=="exam-position")!.Text==$"1 / {examTotal}","visible exam selector and card counter match the imported deck instead of the old four-card deck");
+            Check(examPicker.Items.Cast<ComboBoxItem>().Any(i=>i.Content?.ToString()==$"{oldExam.Title} · 4 题")&&examPicker.Items.Cast<ComboBoxItem>().Any(i=>i.Content?.ToString()==$"{newExam.Title} · {examTotal} 题"),"same-name exam decks display their separate question counts");
+            Check(InteractionElement<TextBox>(body,t=>t.Tag?.ToString()=="exam-question-content")!.Text.ReplaceLineEndings("\n")==newExam.Questions[0].Answer.ReplaceLineEndings("\n"),"visible exam content retains every line of the imported question and choices");
+            await SaveNativePreview(Path.Combine(output,"exam-import-active.png"));
+            await Click("下一题 →");Check(InteractionElement<TextBlock>(body,t=>t.Tag?.ToString()=="exam-position")!.Text==$"2 / {examTotal}","newly imported exam advances within its full card set");
+            await Navigate("templates");await Navigate("exams");await WaitForExamLayout();Check(examDeckId==newExam.Id,"returning to exam reviews keeps the newly imported deck selected");
+            var multiNote=InteractionElement<TextBox>(body,t=>t.Tag?.ToString()=="exam-review-note")!;multiNote.Text="复盘第一行\n复盘第二行";await FlushExamDraft();
+            Check((await api.Get<List<InterviewDeck>>("interviews")).Single(d=>d.Id==newExam.Id).Questions.Any(q=>q.ReviewNote.ReplaceLineEndings("\n")=="复盘第一行\n复盘第二行"),"flushing an edit captures current text even before the deferred TextChanged event");
+            await Navigate("templates");await Navigate("exams");await WaitForExamLayout();
+            Check(InteractionElement<TextBox>(body,t=>t.Tag?.ToString()=="exam-review-note")!.Text.ReplaceLineEndings("\n")=="复盘第一行\n复盘第二行","multiline review notes remain complete after saving and reopening the exam page");
+            Check(FeatureButton(body,"删除复盘题库")?.IsEnabled==true,"selected exam exposes an enabled delete action");
+            var deleting=DeleteExamReview(newExam);var confirm=await FeatureDialog("删除这份笔试复盘？");await FeatureClick(confirm,"取消");await deleting;
+            Check((await api.Get<List<InterviewDeck>>("interviews")).Any(d=>d.Id==newExam.Id)&&examDeckId==newExam.Id,"cancelling deletion preserves the selected exam and its questions");
+            var examNote=InteractionElement<TextBox>(body,t=>t.Tag?.ToString()=="exam-review-note")!;examNote.Text="删除前仍在等待自动保存的复盘内容。";
+            deleting=DeleteExamReview(newExam);confirm=await FeatureDialog("删除这份笔试复盘？");await FeatureClick(confirm,"确认");await deleting;await WaitForExamLayout();await Task.Delay(850);await FlushExamDraft();
+            var remainingExams=(await api.Get<List<InterviewDeck>>("interviews")).Where(d=>d.StudyType=="exam").ToList();
+            Check(remainingExams.Count==1&&remainingExams[0].Id==oldExam.Id&&remainingExams[0].Questions[0].ReviewNote=="旧复盘记录","confirmed deletion removes only the selected exam without an autosave recreating it");
+            Check(examDeckId==oldExam.Id&&InteractionElement<TextBlock>(body,t=>t.Tag?.ToString()=="exam-position")!.Text=="1 / 4","deleting the selected exam falls back to the remaining deck");
+            deleting=DeleteExamReview(oldExam);confirm=await FeatureDialog("删除这份笔试复盘？");await FeatureClick(confirm,"确认");await deleting;await WaitForExamLayout();await Task.Delay(850);await FlushExamDraft();
+            Check(!(await api.Get<List<InterviewDeck>>("interviews")).Any(d=>d.StudyType=="exam")&&examDeckId==""&&examDraftDeck is null&&!examDraftDirty&&FeatureButton(body,"删除复盘题库")?.IsEnabled==false,"deleting the last exam clears stale drafts and shows the empty state with deletion disabled");
+            Check((await api.Get<List<InterviewDeck>>("interviews")).Count==imports.Count,"exam deletion preserves every interview study deck");
             await File.WriteAllTextAsync(Path.Combine(output,"interview-result.json"),JsonSerializer.Serialize(new{status="passed",checks},BackendClient.Json));
         }catch(Exception ex){await File.WriteAllTextAsync(Path.Combine(output,"interview-result.json"),JsonSerializer.Serialize(new{status="failed",checks,error=ex.ToString()},BackendClient.Json));}
         finally {await SaveCurrent();await DetachPreviewAsync(true);await api.StopAsync();closing=true;api.Dispose();Close();}

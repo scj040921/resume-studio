@@ -91,6 +91,9 @@ public sealed partial class MainWindow
         titles.SelectionChanged+=(_,_)=>excerpt.Text=titles.SelectedIndex>=0&&titles.SelectedIndex<questions.Count?questions[titles.SelectedIndex].Answer:"";
         mode.SelectionChanged+=(_,_)=>Refresh();name.TextChanged+=(_,_)=>dialog.IsPrimaryButtonEnabled=questions.Count>0&&!string.IsNullOrWhiteSpace(name.Text);Refresh();
         if(await dialog.ShowAsync()!=ContentDialogResult.Primary)return;
-        var saved=await api.Save("interviews",new InterviewDeck {Title=name.Text.Trim(),SourceName=document.SourceName,StudyType=studyType,Questions=questions});interviewDeckId=saved.Id;interviewFilter="all";interviewIndex=0;await Navigate(studyType=="exam"?"exams":"interviews");Success(studyType=="exam"?"笔试复盘已创建":"题库已导入",$"{saved.Title} · {saved.Questions.Count} 道题。进度会自动保存到本机。");
+        var saved=await api.Save("interviews",new InterviewDeck {Title=name.Text.Trim(),SourceName=document.SourceName,StudyType=studyType,Questions=questions});
+        if(studyType=="exam"){examDeckId=saved.Id;examQuestionIndex=0;}
+        else {interviewDeckId=saved.Id;interviewFilter="all";interviewIndex=0;}
+        await Navigate(studyType=="exam"?"exams":"interviews");Success(studyType=="exam"?"笔试复盘已创建":"题库已导入",$"{saved.Title} · {saved.Questions.Count} 道题。进度会自动保存到本机。");
     }
 }
