@@ -62,6 +62,40 @@ foreach(string emphasis in new[]{"<w:b/>","<w:sz w:val=\"36\"/>"}){
 string inheritedPath=Path.Combine(output,"inherited-numbering.docx");Docx(inheritedPath,styles.Replace("</w:styles>","<w:style w:styleId=\"AutoList\"><w:pPr><w:numPr><w:numId w:val=\"1\"/></w:numPr></w:pPr></w:style></w:styles>"),numberedBody.Replace("<w:numPr><w:ilvl w:val=\"0\"/><w:numId w:val=\"1\"/></w:numPr>","<w:pStyle w:val=\"AutoList\"/>").Replace("<w:numPr><w:numId w:val=\"1\"/></w:numPr>","<w:pStyle w:val=\"AutoList\"/>"));
 using(var target=ZipFile.Open(inheritedPath,ZipArchiveMode.Update)){using var origin=ZipFile.OpenRead(numberedPath);using var sourceStream=origin.GetEntry("word/numbering.xml")!.Open();using var destinationStream=target.CreateEntry("word/numbering.xml").Open();sourceStream.CopyTo(destinationStream);}
 Check(InterviewImport.Split(InterviewImport.Read(inheritedPath)).Count==2,"Word numbering inherited from paragraph styles is recognized");
+string ExamParagraph(string text,string properties="")=>$"<w:p><w:pPr>{properties}</w:pPr><w:r><w:t>{System.Security.SecurityElement.Escape(text)}</w:t></w:r></w:p>";
+string examSection="<w:pStyle w:val=\"Question\"/>",examDecimal="<w:numPr><w:ilvl w:val=\"0\"/><w:numId w:val=\"1\"/></w:numPr>",examOption="<w:numPr><w:ilvl w:val=\"0\"/><w:numId w:val=\"2\"/></w:numPr>";
+string longExamStem="1、分析以下代码并给出输出："+new string('x',310);
+string examBody=$"<w:document xmlns:w=\"{ns}\"><w:body>"+ExamParagraph("测试试卷","<w:pStyle w:val=\"Heading1\"/>")+
+    ExamParagraph("一、选择题（每题2分）",examSection)+ExamParagraph("请选择一个正确选项。")+ExamParagraph("1、指针保存什么？")+ExamParagraph("地址",examOption)+ExamParagraph("B、数值")+
+    ExamParagraph("结构体的特点",examDecimal)+ExamParagraph("用户填写的答案：内存布局相关。")+ExamParagraph("答案中的编号步骤","<w:numPr><w:ilvl w:val=\"1\"/><w:numId w:val=\"1\"/></w:numPr>")+
+    ExamParagraph("二、填空题（每题5分）",examSection)+ExamParagraph("1、文件关闭函数是____。")+ExamParagraph("2、栈由____管理。")+
+    ExamParagraph("三、简答题（每题5分）",examSection)+ExamParagraph("1、简述任务调度。")+ExamParagraph("说明互斥机制",examDecimal).Replace("说明互斥机制</w:t>","说明互斥机制</w:t><w:br/><w:t>用户填写的答案正文</w:t>")+
+    ExamParagraph("四、编程题（每题10分）",examSection)+ExamParagraph(longExamStem)+ExamParagraph("for (int i=0; i&lt;3; i++) {}".Replace("&lt;","<"))+ExamParagraph("2、实现字符串拼接。")+
+    ExamParagraph("五、综合题",examSection)+ExamParagraph("未编号的完整题干及作答要求。")+
+    ExamParagraph("六、程序阅读题",examSection)+ExamParagraph("理解中断流程","<w:outlineLvl w:val=\"2\"/>")+ExamParagraph("程序正文一。")+ExamParagraph("分析调度流程","<w:outlineLvl w:val=\"2\"/>")+ExamParagraph("程序正文二。")+"</w:body></w:document>";
+string examPath=Path.Combine(output,"exam-mixed-numbering.docx");Docx(examPath,styles,examBody);
+using(var zip=ZipFile.Open(examPath,ZipArchiveMode.Update)){using var stream=new StreamWriter(zip.CreateEntry("word/numbering.xml").Open());stream.Write($"""<w:numbering xmlns:w="{ns}"><w:abstractNum w:abstractNumId="0"><w:lvl w:ilvl="0"><w:start w:val="2"/><w:numFmt w:val="decimal"/><w:lvlText w:val="%1、"/></w:lvl><w:lvl w:ilvl="1"><w:numFmt w:val="decimal"/></w:lvl></w:abstractNum><w:abstractNum w:abstractNumId="1"><w:lvl w:ilvl="0"><w:numFmt w:val="upperLetter"/><w:lvlText w:val="%1、"/></w:lvl></w:abstractNum><w:num w:numId="1"><w:abstractNumId w:val="0"/></w:num><w:num w:numId="2"><w:abstractNumId w:val="1"/></w:num></w:numbering>""");}
+var examDocument=InterviewImport.Read(examPath);var examQuestions=InterviewImport.Split(examDocument);
+Check(examQuestions.Count==11&&examQuestions.All(q=>q.Title.Length<=300),"exam section headings coexist with manual and automatic subquestion numbers");
+Check(examQuestions[0].Answer.Contains("A、 地址")&&examQuestions[0].Answer.Contains("B、数值")&&examQuestions[1].Answer.Contains("编号步骤"),"exam options and nested answer lists stay in the current question");
+Check(examQuestions[0].Answer.Contains("请选择")&&examQuestions[1].Answer.Contains("请选择")&&examQuestions[1].Answer.Contains("用户填写的答案"),"shared exam instructions and entered answers are preserved without becoming questions");
+Check(examQuestions[5].Title.Contains("互斥")&&!examQuestions[5].Title.Contains("答案正文")&&examQuestions[5].Answer.Contains("答案正文"),"a Word line break separates an automatically numbered question from its entered answer");
+Check(examQuestions[6].Answer.Contains(longExamStem)&&examQuestions[6].Answer.Contains("for (int")&&examQuestions[8].Answer.Contains("未编号"),"long exam stems, code and sections without subquestion numbers are not discarded");
+Check(examQuestions[9].Title=="理解中断流程"&&examQuestions[10].Answer.Contains("正文二"),"explicit subquestion headings remain recognized alongside inferred exam numbers");
+Check(InterviewImport.AutoLevel(new("exam.docx",[new("一、选择题",2),new("二、填空题",2),new("理解指针",3),new("理解数组",3),new("三、简答题",2)]))==3,"exam category counts cannot override explicit subquestion headings");
+Check(InterviewImport.Split(examDocument,2).Count==6,"manual exam section-level splitting remains available");
+string? actualExam=Environment.GetEnvironmentVariable("RESUMESTUDIO_EXAM_DOCUMENT");
+if(!string.IsNullOrWhiteSpace(actualExam)){
+    var actual=InterviewImport.Split(InterviewImport.Read(actualExam));
+    Check(actual.Count==29&&actual.Take(20).All(q=>q.Answer.StartsWith("一、选择题"))&&actual.Skip(20).Take(4).All(q=>q.Answer.StartsWith("二、填空题"))&&actual.Skip(24).Take(2).All(q=>q.Answer.StartsWith("三、简答题"))&&actual.Skip(26).All(q=>q.Answer.StartsWith("四、编程题")),"actual exam has 20 choice, 4 fill-in, 2 short-answer and 3 programming question cards");
+    Check(actual[19].Answer.Contains("A、 编译-")&&actual[25].Title.Contains("顺序表")&&actual[25].Answer.Contains("随机访问")&&actual[26].Answer.Contains("count++")&&actual[28].Title.Contains("字符串拼接"),"actual exam retains automatic letter options, same-paragraph entered answers and programming code");
+    using var zip=ZipFile.OpenRead(actualExam);using var stream=zip.GetEntry("word/document.xml")!.Open();var xml=XDocument.Load(stream);XNamespace w=ns;
+    string Compact(string text)=>new(text.Where(c=>!char.IsWhiteSpace(c)).ToArray());
+    string imported=Compact(string.Join("\n",actual.Select(q=>q.Title+"\n"+q.Answer)));
+    var original=xml.Descendants(w+"p").Skip(1).Select(p=>string.Concat(p.Descendants().Where(e=>e.Name==w+"t"||e.Name==w+"br"||e.Name==w+"tab").Select(e=>e.Name==w+"t"?e.Value:e.Name==w+"br"?"\n":"\t"))).SelectMany(t=>t.Split('\n')).Select(Compact).Where(t=>t.Length>0).ToList();
+    Check(original.All(imported.Contains),"every nonblank source line after the exam title is retained in the imported cards");
+    File.WriteAllText(Path.Combine(output,"actual-exam-result.json"),System.Text.Json.JsonSerializer.Serialize(actual));
+}
 if(args.Length>2){var userDocument=InterviewImport.Read(args[2]);var userQuestions=InterviewImport.Split(userDocument);Check(userQuestions.Count==82&&userQuestions[0].Title=="tcp和udp的区别"&&userQuestions[^1].Title=="extern关键字的作用？","actual user Word document splits all 82 numbered question titles in order");Check(userQuestions[0].Answer.Contains("连接方式")&&userQuestions[0].Answer.Contains("无流量控制")&&userQuestions[0].Answer.Contains("TCP"),"actual document keeps comparison table text in the first answer");File.WriteAllText(Path.Combine(output,"user-import-result.json"),System.Text.Json.JsonSerializer.Serialize(userQuestions));}
 if(args.Length>2){using var zip=ZipFile.OpenRead(args[2]);using var stream=zip.GetEntry("word/document.xml")!.Open();var xml=XDocument.Load(stream);XNamespace w=ns;var expected=xml.Descendants(w+"p").Where(p=>p.Element(w+"pPr")?.Element(w+"numPr")?.Element(w+"numId")?.Attribute(w+"val")?.Value=="1").Select(p=>string.Concat(p.Descendants(w+"t").Select(t=>t.Value)).Trim()).ToArray();Check(InterviewImport.Split(InterviewImport.Read(args[2])).Select(q=>q.Title).SequenceEqual(expected),"every actual document question title matches the original 82 numbered paragraphs exactly");}
 var builder=new PdfDocumentBuilder();var font=builder.AddStandard14Font(Standard14Font.Helvetica);var page=builder.AddPage(PageSize.A4);
