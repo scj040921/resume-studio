@@ -38,6 +38,9 @@ public sealed partial class MainWindow
         try
         {
             if(generation!=navigationRevision||current is null)return;
+            // Some entry points open the editor directly rather than through Navigate.
+            if(currentPage=="exams")await FlushExamDraft();
+            if(generation!=navigationRevision||current is null)return;
             await OpenEditorCore(generation);
         }
         finally { pageTransitionLock.Release(); }

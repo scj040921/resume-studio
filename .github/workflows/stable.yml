@@ -47,6 +47,7 @@ jobs:
           ./scripts/test-workbench.ps1
           ./scripts/test-resume-import.ps1 -TextOnly
           ./scripts/test-interviews.ps1 -ApplicationPath release/ResumeStudio/ResumeStudio.exe
+          ./scripts/test-editor-navigation.ps1
           ./scripts/test-maintenance.ps1
           ./scripts/package.ps1
       - name: Install verified installer build tools

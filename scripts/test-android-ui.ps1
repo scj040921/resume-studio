@@ -6,6 +6,7 @@ New-Item -ItemType Directory -Force "$build\results"|Out-Null;Remove-Item -Liter
 Copy-Item -LiteralPath "$root\tests\android\acceptance.js" -Destination "$build\assets" -Force
 Copy-Item -LiteralPath "$root\tests\android\motion-acceptance.js" -Destination "$build\assets" -Force
 Copy-Item -LiteralPath "$root\tests\android\fixtures\stable-channel.json" -Destination "$build\assets" -Force
+if($env:RESUMESTUDIO_EXAM_DOCUMENT){Copy-Item -LiteralPath $env:RESUMESTUDIO_EXAM_DOCUMENT -Destination "$build\assets\private-exam.docx" -Force}else{Remove-Item -LiteralPath "$build\assets\private-exam.docx" -Force -ErrorAction SilentlyContinue}
 & "$jdk\bin\javac.exe" -encoding UTF-8 --release 17 -classpath $platform -d "$build\classes" "$root\tests\android\AcceptanceInstrumentation.java";if($LASTEXITCODE){throw 'Instrumentation compile failed'}
 & "$jdk\bin\jar.exe" --create --file "$build\classes.jar" -C "$build\classes" .
 & "$jdk\bin\java.exe" -cp "$tools\lib\d8.jar" com.android.tools.r8.D8 --min-api 26 --lib $platform --output "$build\dex" "$build\classes.jar";if($LASTEXITCODE){throw 'Instrumentation dex failed'}

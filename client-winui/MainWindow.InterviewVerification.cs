@@ -15,6 +15,7 @@ public sealed partial class MainWindow
         Directory.CreateDirectory(output);var checks=new List<string>();
         void Check(bool ok,string name){if(!ok)throw new Exception(name);checks.Add(name);}
         async Task Click(string label){var button=FeatureButton(body,label)??throw new Exception("Action missing: "+label);((IInvokeProvider)new ButtonAutomationPeer(button).GetPattern(PatternInterface.Invoke)).Invoke();await Task.Delay(180);}
+        async Task WaitForInterviewPosition(int index,int total){for(int attempt=0;attempt<100;attempt++){body.UpdateLayout();var position=InteractionElement<TextBlock>(body,t=>t.Tag?.ToString()=="interview-position");var random=FeatureButton(body,"随机抽题");if(position?.Text==$"第 {index+1} / {total} 题"&&random?.IsEnabled==true)return;await Task.Delay(50);}throw new Exception($"Interview did not navigate to question {index+1} / {total}");}
         async Task WaitForExamLayout(){for(int attempt=0;attempt<100;attempt++){body.UpdateLayout();if(InteractionElement<ComboBox>(body,c=>c.Tag?.ToString()=="exam-deck") is not null&&FeatureButton(body,"删除复盘题库") is not null)return;await Task.Delay(50);}throw new Exception("Exam page did not finish native layout");}
         async Task WaitForExamPosition(int index,int total){for(int attempt=0;attempt<100;attempt++){body.UpdateLayout();var position=InteractionElement<TextBlock>(body,t=>t.Tag?.ToString()=="exam-position");var picker=InteractionElement<ComboBox>(body,c=>c.Tag?.ToString()=="exam-question-picker");if(position?.Text==$"{index+1} / {total}"&&picker?.SelectedIndex==index&&picker.IsEnabled)return;await Task.Delay(50);}throw new Exception($"Exam did not navigate to question {index+1} / {total}");}
         try {
@@ -65,17 +66,22 @@ public sealed partial class MainWindow
                 Check(currentPage=="interviews"&&InterviewProgress.Count((await api.Get<List<InterviewDeck>>("interviews")).Single(d=>d.Id==interviewDeckId).Questions).Total==expected,extension+": confirmed import saves a complete deck through Java");
             }
             Check((await api.Get<List<InterviewDeck>>("interviews")).Count==imports.Count,"importing another document preserves previous decks");
-            await Click("✓ 已记住");var deck=(await api.Get<List<InterviewDeck>>("interviews")).Single(d=>d.Id==interviewDeckId);
-            Check(deck.Questions[0].Status=="remembered"&&interviewIndex==1,"remembered verdict persists and advances to the second card");
+            await interviewSaveLock.WaitAsync();
+            try{await Click("✓ 已记住");Check(FeatureButton(body,"随机抽题")?.IsEnabled==false,"random selection is disabled while a review save is pending");}
+            finally{interviewSaveLock.Release();}
+            await WaitForInterviewPosition(1,2);var deck=(await api.Get<List<InterviewDeck>>("interviews")).Single(d=>d.Id==interviewDeckId);
+            Check(deck.Questions[0].Status=="remembered"&&interviewIndex==1&&deck.LastQuestionId==deck.Questions[1].Id,"remembered verdict persists and bookmarks the second card after advancing");
             await Click("未掌握");deck=(await api.Get<List<InterviewDeck>>("interviews")).Single(d=>d.Id==interviewDeckId);
             Check(InterviewProgress.Count(deck.Questions)==new InterviewCounts(2,1,1,0),"both buttons produce separate persisted statistics");
             await Click("← 上一题");Check(interviewIndex==0,"mouse previous action returns to the first card");
             await Click("未掌握");deck=(await api.Get<List<InterviewDeck>>("interviews")).Single(d=>d.Id==interviewDeckId);
             Check(InterviewProgress.Count(deck.Questions)==new InterviewCounts(2,0,2,0),"changing a remembered card to unmastered replaces rather than duplicates its count");
             var filter=InteractionElement<ComboBox>(body,c=>c.Tag?.ToString()=="interview-filter")!;filter.SelectedIndex=2;await Task.Delay(100);
-            Check(InteractionElement<TextBlock>(body,t=>t.Tag?.ToString()=="interview-position")!.Text=="0 / 0","empty remembered filter has no stale card");
+            Check(InteractionElement<TextBlock>(body,t=>t.Tag?.ToString()=="interview-position")!.Text=="0 / 0"&&FeatureButton(body,"随机抽题")?.IsEnabled==false,"empty remembered filter has no stale card and disables random selection");
             filter.SelectedIndex=1;await Task.Delay(100);
             Check(FeatureButton(body,"✓ 已记住") is not null,"unmastered practice filter shows the relevant question");
+            await Click("随机抽题");await WaitForInterviewPosition(1,2);await interviewSaveLock.WaitAsync();interviewSaveLock.Release();
+            Check((await api.Get<List<InterviewDeck>>("interviews")).Single(d=>d.Id==interviewDeckId).LastQuestionId==deck.Questions[1].Id,"random selection moves to a different question and saves its position");
             await SaveNativePreview(Path.Combine(output,"interview-study.png"));
             string savedId=interviewDeckId;await Navigate("templates");await Navigate("interviews");await Task.Delay(120);
             Check(interviewDeckId==savedId&&InteractionElement<TextBlock>(body,t=>t.Tag?.ToString()=="interview-stats")!.Text.Contains("未掌握 2"),"returning to study restores saved verdicts and statistics");
@@ -129,6 +135,12 @@ public sealed partial class MainWindow
             Check((await api.Get<List<InterviewDeck>>("interviews")).Single(d=>d.Id==newExam.Id).Questions.Any(q=>q.ReviewNote.ReplaceLineEndings("\n")=="复盘第一行\n复盘第二行"),"flushing an edit captures current text even before the deferred TextChanged event");
             await Navigate("templates");await Navigate("exams");await WaitForExamLayout();
             Check(InteractionElement<TextBox>(body,t=>t.Tag?.ToString()=="exam-review-note")!.Text.ReplaceLineEndings("\n")=="复盘第一行\n复盘第二行","multiline review notes remain complete after saving and reopening the exam page");
+            var resumeFixture=Blank(templates.First());resumeFixture.Title="复盘切页保存测试";current=await api.Save("resumes",resumeFixture);dirty=false;
+            var pendingReview=InteractionElement<TextBox>(body,t=>t.Tag?.ToString()=="exam-review-note")!;await examSaveLock.WaitAsync();Task opening=Task.CompletedTask;
+            try{pendingReview.Text="打开简历前立即输入的复盘";opening=OpenEditor();await Task.Delay(200);Check(currentPage=="exams"&&!opening.IsCompleted,"direct editor navigation waits for the active exam draft to be saved");}
+            finally{examSaveLock.Release();}
+            await opening;Check(currentPage=="editor"&&(await api.Get<List<InterviewDeck>>("interviews")).Single(d=>d.Id==newExam.Id).Questions.Any(q=>q.ReviewNote=="打开简历前立即输入的复盘"),"directly opening the resume editor preserves the latest exam review");
+            await Navigate("exams");await WaitForExamLayout();
             Check(FeatureButton(body,"删除复盘题库")?.IsEnabled==true,"selected exam exposes an enabled delete action");
             var deleting=DeleteExamReview(newExam);var confirm=await FeatureDialog("删除这份笔试复盘？");await FeatureClick(confirm,"取消");await deleting;
             Check((await api.Get<List<InterviewDeck>>("interviews")).Any(d=>d.Id==newExam.Id)&&examDeckId==newExam.Id,"cancelling deletion preserves the selected exam and its questions");

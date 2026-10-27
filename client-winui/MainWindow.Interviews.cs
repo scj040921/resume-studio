@@ -42,18 +42,18 @@ public sealed partial class MainWindow
         var footer=Stack(8);footer.Margin=new Thickness(0,12,0,0);
         var arrows=Row();arrows.HorizontalAlignment=HorizontalAlignment.Center;
         List<InterviewQuestion> visible=[];bool saving=false;
-        Button previous=null!,next=null!;var position=Text("",13);position.VerticalAlignment=VerticalAlignment.Center;position.Tag="interview-position";
+        Button previous=null!,next=null!,random=null!;var position=Text("",13);position.VerticalAlignment=VerticalAlignment.Center;position.Tag="interview-position";
         previous=Button("← 上一题",()=>{Move(-1);return Task.CompletedTask;});
         next=Button("下一题 →",()=>{Move(1);return Task.CompletedTask;});arrows.Children.Add(previous);arrows.Children.Add(position);arrows.Children.Add(next);footer.Children.Add(arrows);
         var tip=Text("使用左右方向键或按钮切题；滚动鼠标滚轮可阅读答案。标记后自动进入下一题。",11);tip.HorizontalAlignment=HorizontalAlignment.Center;footer.Children.Add(tip);Grid.SetRow(footer,2);body.Children.Add(footer);
-        toolbar.Children.Add(ToolbarField("",Button("随机抽题",()=>{if(visible.Count>0){interviewIndex=Random.Shared.Next(visible.Count);Draw();_=SaveInterviewBookmark(deck!,visible[interviewIndex].Id);}return Task.CompletedTask;})));
+        random=Button("随机抽题",()=>{if(!Alive()||saving||visible.Count<2)return Task.CompletedTask;int target=Random.Shared.Next(visible.Count-1);if(target>=interviewIndex)target++;interviewIndex=target;Draw();_=SaveInterviewBookmark(deck!,visible[interviewIndex].Id);return Task.CompletedTask;});toolbar.Children.Add(ToolbarField("",random));
         bool Alive()=>PageIsCurrent("interviews",generation);
         bool Move(int delta){if(!Alive()||saving||visible.Count==0)return false;int target=Math.Clamp(interviewIndex+delta,0,visible.Count-1);if(target==interviewIndex)return false;interviewIndex=target;Draw();_=SaveInterviewBookmark(deck!,visible[interviewIndex].Id);return true;}
         void Draw()
         {
             if(!Alive())return;visible=deck is null?[]:InterviewProgress.Filter(deck,interviewFilter).ToList();interviewIndex=Math.Clamp(interviewIndex,0,Math.Max(0,visible.Count-1));
             var totals=InterviewProgress.Count(deck?.Questions??[]);stats.Text=$"共 {totals.Total} 题  ·  已记住 {totals.Remembered}  ·  未掌握 {totals.Learning}  ·  未标记 {totals.Unseen}";
-            previous.IsEnabled=!saving&&interviewIndex>0;next.IsEnabled=!saving&&interviewIndex+1<visible.Count;select.IsEnabled=!saving;filter.IsEnabled=!saving;remove.IsEnabled=!saving&&deck is not null;
+            previous.IsEnabled=!saving&&interviewIndex>0;next.IsEnabled=!saving&&interviewIndex+1<visible.Count;random.IsEnabled=!saving&&visible.Count>1;select.IsEnabled=!saving;filter.IsEnabled=!saving;remove.IsEnabled=!saving&&deck is not null;
             position.Text=visible.Count==0?"0 / 0":$"第 {interviewIndex+1} / {visible.Count} 题";
             if(visible.Count==0){var empty=Stack(12);empty.VerticalAlignment=VerticalAlignment.Center;empty.HorizontalAlignment=HorizontalAlignment.Center;empty.Children.Add(Text(deck is null?"导入你的第一份面试题文档":"这个练习范围暂时没有题目",22,true));empty.Children.Add(Text(deck is null?"支持 Markdown、TXT、DOCX 和文字型 PDF，按小标题生成题目卡片。":"可以切换到“全部题目”，重新复习或调整掌握状态。",14));host.Child=Card(empty);return;}
             var q=visible[interviewIndex];var card=new Grid {RowSpacing=14};card.RowDefinitions.Add(new RowDefinition {Height=GridLength.Auto});card.RowDefinitions.Add(new RowDefinition {Height=new GridLength(1,GridUnitType.Star)});card.RowDefinitions.Add(new RowDefinition {Height=GridLength.Auto});
@@ -63,7 +63,15 @@ public sealed partial class MainWindow
             toggle.Toggled+=(_,_)=>text.Visibility=toggle.IsOn?Visibility.Visible:Visibility.Collapsed;
             var answerScroll=new ScrollViewer {Content=answer,HorizontalScrollMode=ScrollMode.Disabled,VerticalScrollBarVisibility=ScrollBarVisibility.Auto,HorizontalContentAlignment=HorizontalAlignment.Stretch};Grid.SetRow(answerScroll,1);card.Children.Add(answerScroll);
             var verdict=new Grid {ColumnSpacing=14};verdict.ColumnDefinitions.Add(new ColumnDefinition());verdict.ColumnDefinitions.Add(new ColumnDefinition());
-            async Task Review(string status){if(saving||!Alive())return;saving=true;Draw();try {await MarkInterview(deck!,q,status);if(!Alive())return;var remains=InterviewProgress.Filter(deck!,interviewFilter).ToList();if(remains.Contains(q))interviewIndex=Math.Min(interviewIndex+1,Math.Max(0,remains.Count-1));}finally {saving=false;if(Alive())Draw();}}
+            async Task Review(string status){
+                if(saving||!Alive())return;saving=true;Draw();var reviewedDeck=deck!;
+                try {
+                    await MarkInterview(reviewedDeck,q,status);if(!Alive())return;
+                    var remains=InterviewProgress.Filter(reviewedDeck,interviewFilter).ToList();
+                    if(remains.Count>0){interviewIndex=Math.Min(interviewIndex+(remains.Contains(q)?1:0),remains.Count-1);string nextId=remains[interviewIndex].Id;if(nextId!=q.Id)await SaveInterviewBookmark(reviewedDeck,nextId);}
+                }
+                finally {saving=false;if(Alive())Draw();}
+            }
             var remembered=Button("✓ 已记住",()=>Review("remembered"),true);remembered.Tag="interview-remembered";remembered.HorizontalAlignment=HorizontalAlignment.Stretch;remembered.IsEnabled=!saving;
             var learning=Button("未掌握",()=>Review("learning"));learning.Tag="interview-learning";learning.HorizontalAlignment=HorizontalAlignment.Stretch;learning.IsEnabled=!saving;Grid.SetColumn(learning,1);verdict.Children.Add(remembered);verdict.Children.Add(learning);Grid.SetRow(verdict,2);card.Children.Add(verdict);
             host.Child=Card(card,new Thickness(24));

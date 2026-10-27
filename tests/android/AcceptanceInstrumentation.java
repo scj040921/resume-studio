@@ -13,6 +13,8 @@ import java.io.*;
 import java.lang.reflect.Method;
 import java.nio.charset.StandardCharsets;
 import java.util.Base64;
+import java.util.List;
+import java.util.Map;
 import java.util.concurrent.*;
 
 /** Runs against the signed production APK; no test bridge or debugging mode is shipped in the app. */
@@ -253,6 +255,14 @@ public final class AcceptanceInstrumentation extends Instrumentation {
         for(String extension:new String[]{"md","txt"}){Object result=read.invoke(null,"fixture."+extension,"## 什么是 TCP？\n可靠字节流协议。".getBytes(java.nio.charset.StandardCharsets.UTF_8));if(!result.toString().contains("TCP"))throw new IOException("Text import failed");}
         ByteArrayOutputStream bytes=new ByteArrayOutputStream();try(java.util.zip.ZipOutputStream zip=new java.util.zip.ZipOutputStream(bytes)){zip.putNextEntry(new java.util.zip.ZipEntry("word/document.xml"));zip.write("<w:document xmlns:w=\"http://schemas.openxmlformats.org/wordprocessingml/2006/main\"><w:body><w:p><w:pPr><w:outlineLvl w:val=\"1\"/></w:pPr><w:r><w:t>什么是 TCP？</w:t></w:r></w:p><w:p><w:r><w:t>可靠字节流协议。</w:t></w:r></w:p></w:body></w:document>".getBytes(java.nio.charset.StandardCharsets.UTF_8));zip.closeEntry();}
         if(!read.invoke(null,"fixture.docx",bytes.toByteArray()).toString().contains("TCP"))throw new IOException("DOCX import failed");
+        try(InputStream exam=getContext().getAssets().open("private-exam.docx")){
+            @SuppressWarnings("unchecked") Map<String,Object> document=(Map<String,Object>)read.invoke(null,"private-exam.docx",exam.readAllBytes());
+            @SuppressWarnings("unchecked") List<Map<String,Object>> blocks=(List<Map<String,Object>>)document.get("blocks");
+            long count=blocks.stream().filter(b->((Number)b.get("level")).intValue()==3).count();
+            if(count!=29)throw new IOException("Word exam subquestions: expected 29, got "+count);
+            String split=js("(state.imported="+new JSONObject(document).toString()+",splitImport(3).length)");
+            if(!"29".equals(split))throw new IOException("Word exam card count does not match imported subquestions");
+        }catch(java.io.FileNotFoundException ignored){/* Optional local user fixture; never part of releases. */}
         byte[] pdfBytes;try(InputStream in=new FileInputStream(pdf)){pdfBytes=in.readAllBytes();}if(!read.invoke(null,"fixture.pdf",pdfBytes).toString().contains("LVGL"))throw new IOException("PDF text import failed");
     }
 }
