@@ -12,10 +12,11 @@ public sealed partial class MainWindow
     private string interviewDeckId="",interviewFilter="all";
     private int interviewIndex;
     private readonly SemaphoreSlim interviewSaveLock=new(1,1);
+    private readonly HashSet<string> deletedInterviewDeckIds=[];
     private async Task MarkInterview(InterviewDeck deck,InterviewQuestion question,string status)
     {
         await interviewSaveLock.WaitAsync();var previous=CloneDocument(question);string before=question.Status,at=question.ReviewedAt;
-        try {InterviewProgress.Review(question,status,DateTimeOffset.UtcNow);deck.LastQuestionId=question.Id;var saved=await api.Save("interviews",deck);deck.UpdatedAt=saved.UpdatedAt;}
+        try {if(deletedInterviewDeckIds.Contains(deck.Id))throw new IOException("题库已删除，无法继续保存。");InterviewProgress.Review(question,status,DateTimeOffset.UtcNow);deck.LastQuestionId=question.Id;var saved=await api.Save("interviews",deck);deck.UpdatedAt=saved.UpdatedAt;}
         catch {question.Status=before;question.ReviewedAt=at;question.ReviewCount=previous.ReviewCount;question.IntervalDays=previous.IntervalDays;question.NextReviewAt=previous.NextReviewAt;throw;}
         finally {interviewSaveLock.Release();}
     }
@@ -25,6 +26,8 @@ public sealed partial class MainWindow
         Heading("面试题背诵","一次专注一道题，记录掌握情况；题库和进度自动保存在本机。");
         var decks=await api.Get<List<InterviewDeck>>("interviews");if(!PageIsCurrent("interviews",generation))return;
         decks=decks.Where(d=>d.StudyType!="exam").OrderBy(d=>d.Title).ToList();
+        // A deck restored from backup can reuse its original ID.
+        deletedInterviewDeckIds.ExceptWith(decks.Select(d=>d.Id));
         body.RowDefinitions.Add(new RowDefinition {Height=GridLength.Auto});body.RowDefinitions.Add(new RowDefinition {Height=new GridLength(1,GridUnitType.Star)});body.RowDefinitions.Add(new RowDefinition {Height=GridLength.Auto});
         var tools=Stack(9);var toolbar=Row();toolbar.VerticalAlignment=VerticalAlignment.Top;
         toolbar.Children.Add(ToolbarField("",Button("＋ 导入题目文档",ImportInterviews,true)));
@@ -33,7 +36,7 @@ public sealed partial class MainWindow
         string[] filters=["all","learning","remembered","unseen","due"];filter.SelectedIndex=Math.Max(0,Array.IndexOf(filters,interviewFilter));
         toolbar.Children.Add(ToolbarField("题库",select));toolbar.Children.Add(ToolbarField("练习范围",filter));
         InterviewDeck? deck=decks.FirstOrDefault(d=>d.Id==interviewDeckId)??decks.FirstOrDefault();select.SelectedItem=deck;
-        var remove=Button("删除题库",async ()=> {var selected=deck;if(selected is null)return;if(await Confirm("删除这份题库？",selected.Title+"，题目及背诵进度将一并删除。")){await api.Delete("interviews/"+selected.Id);interviewDeckId="";interviewIndex=0;await Navigate("interviews");}});remove.IsEnabled=deck is not null;toolbar.Children.Add(ToolbarField("",remove));
+        var remove=Button("删除题库",async ()=>{if(deck is not null)await DeleteInterviewDeck(deck);});remove.IsEnabled=deck is not null;toolbar.Children.Add(ToolbarField("",remove));
         tools.Children.Add(toolbar);var stats=Text("",13,true);stats.Tag="interview-stats";tools.Children.Add(stats);tools.Margin=new Thickness(0,0,0,12);body.Children.Add(tools);
         var host=new Border {MaxWidth=1040,HorizontalAlignment=HorizontalAlignment.Stretch,Tag="interview-card-host"};Grid.SetRow(host,1);body.Children.Add(host);
         var footer=Stack(8);footer.Margin=new Thickness(0,12,0,0);
@@ -71,7 +74,21 @@ public sealed partial class MainWindow
         interviewDeckId=deck?.Id??"";if(deck is not null)interviewIndex=Math.Max(0,InterviewProgress.Filter(deck,interviewFilter).ToList().FindIndex(q=>q.Id==deck.LastQuestionId));Draw();
     }
     private async Task SaveInterviewBookmark(InterviewDeck deck,string id){
-        await interviewSaveLock.WaitAsync();try{deck.LastQuestionId=id;var saved=await api.Save("interviews",deck);deck.UpdatedAt=saved.UpdatedAt;}catch(Exception ex){Feedback("断点保存未完成",ex.Message);}finally{interviewSaveLock.Release();}
+        await interviewSaveLock.WaitAsync();try{if(deletedInterviewDeckIds.Contains(deck.Id))return;deck.LastQuestionId=id;var saved=await api.Save("interviews",deck);deck.UpdatedAt=saved.UpdatedAt;}catch(Exception ex){Feedback("断点保存未完成",ex.Message);}finally{interviewSaveLock.Release();}
+    }
+    private async Task DeleteInterviewDeck(InterviewDeck deck)
+    {
+        if(!await Confirm("删除这份题库？",deck.Title+"，题目及背诵进度将一并删除。"))return;
+        shell.IsHitTestVisible=false;
+        try{
+            // Complete pending bookmark/review writes before deleting so a late save
+            // cannot recreate a deck that the user has just removed.
+            await interviewSaveLock.WaitAsync();
+            try{await api.Delete("interviews/"+deck.Id);deletedInterviewDeckIds.Add(deck.Id);if(interviewDeckId==deck.Id){interviewDeckId="";interviewIndex=0;}}
+            finally{interviewSaveLock.Release();}
+            await Navigate("interviews");
+        }
+        finally{shell.IsHitTestVisible=true;}
     }
     private async Task ImportInterviews()
     {

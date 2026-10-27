@@ -29,7 +29,12 @@ public sealed partial class MainWindow
                 else if(target=="favorites")await EditFavorite((await api.Get<List<Job>>(target)).First(r=>r.Id==id),false);
                 else if(target=="applications")await EditApplication((await api.Get<List<ApplicationRecord>>(target)).First(r=>r.Id==id));
                 else if(target=="schedule")await EditSchedule((await api.Get<List<ScheduleItem>>(target)).First(r=>r.Id==id));
-                else{if(target=="interviews")interviewDeckId=id;await Navigate(target);}return;
+                else if(target=="interviews"){
+                    var deck=(await api.Get<List<InterviewDeck>>(target)).FirstOrDefault(d=>d.Id==id)??throw new IOException("题库已删除，请重新搜索。");
+                    if(deck.StudyType=="exam"){examDeckId=id;await Navigate("exams");}
+                    else{interviewDeckId=id;await Navigate("interviews");}
+                }
+                else await Navigate(target);return;
             }
             if(!await Confirm("确认批量修改？",$"将修改 {selected.Count} 条记录；原资料会自动备份。"))continue;
             string at=deadline.Date is null?"":new DateTimeOffset(deadline.Date.Value.LocalDateTime.Date.AddDays(1).AddTicks(-1),TimeZoneInfo.Local.GetUtcOffset(deadline.Date.Value.LocalDateTime)).ToString("O");

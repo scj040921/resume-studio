@@ -16,6 +16,7 @@ public sealed partial class MainWindow
         void Check(bool ok,string name){if(!ok)throw new Exception(name);checks.Add(name);}
         async Task Click(string label){var button=FeatureButton(body,label)??throw new Exception("Action missing: "+label);((IInvokeProvider)new ButtonAutomationPeer(button).GetPattern(PatternInterface.Invoke)).Invoke();await Task.Delay(180);}
         async Task WaitForExamLayout(){for(int attempt=0;attempt<100;attempt++){body.UpdateLayout();if(InteractionElement<ComboBox>(body,c=>c.Tag?.ToString()=="exam-deck") is not null&&FeatureButton(body,"删除复盘题库") is not null)return;await Task.Delay(50);}throw new Exception("Exam page did not finish native layout");}
+        async Task WaitForExamPosition(int index,int total){for(int attempt=0;attempt<100;attempt++){body.UpdateLayout();var position=InteractionElement<TextBlock>(body,t=>t.Tag?.ToString()=="exam-position");var picker=InteractionElement<ComboBox>(body,c=>c.Tag?.ToString()=="exam-question-picker");if(position?.Text==$"{index+1} / {total}"&&picker?.SelectedIndex==index&&picker.IsEnabled)return;await Task.Delay(50);}throw new Exception($"Exam did not navigate to question {index+1} / {total}");}
         try {
             await api.Save("favorites",new Job {Id="compact-neighbor",Title="嵌入式测试工程师",Company="测试公司",Location="广州",Source="BOSS直聘",Url="https://example.com/neighbor"});
             await api.Save("favorites",new Job {Id="compact",Title="嵌入式软件工程师",Company="公司名称\n测试公司",Location="深圳",Source="BOSS直聘",Salary="15–20K",Url="https://example.com/compact",Description=string.Join("\n",Enumerable.Repeat("工作职责与任职资格：开发、调试、测试及文档。",30))});
@@ -100,12 +101,28 @@ public sealed partial class MainWindow
             Check(sectionTitle.Text.StartsWith("一、选择题")&&questionTitle.Text==newExam.Questions[0].Title&&sectionTitle.FontSize>questionTitle.FontSize&&ExamTop(sectionTitle)<ExamTop(questionTitle)&&ExamTop(questionTitle)<ExamTop(questionContent),"exam section heading appears above its smaller subquestion heading and question body");
             Check(questionContent.Text.ReplaceLineEndings("\n")==newExam.Questions[0].Answer.ReplaceLineEndings("\n").Split('\n',2)[1],"question body keeps all choices and lines while its section heading is displayed separately");
             await SaveNativePreview(Path.Combine(output,"exam-import-active.png"));
+            var jump=InteractionElement<ComboBox>(body,c=>c.Tag?.ToString()=="exam-question-picker")!;
+            Check(jump.Items.Count==examTotal&&jump.SelectedIndex==0&&ExamTop(jump)<ExamTop(questionTitle)&&FeatureButton(body,"← 上一题")?.IsEnabled==false&&FeatureButton(body,"下一题 →")?.IsEnabled==true,"exam navigator is above the card, lists every question and disables previous at the first question");
+            var firstNote=InteractionElement<TextBox>(body,t=>t.Tag?.ToString()=="exam-review-note")!;firstNote.Text="跳题前还未自动保存的内容。";
+            jump.SelectedIndex=examTotal-1;await WaitForExamPosition(examTotal-1,examTotal);
+            Check(FeatureButton(body,"下一题 →")?.IsEnabled==false&&FeatureButton(body,"← 上一题")?.IsEnabled==true,"direct jump reaches the last question and updates navigation button states");
+            await FlushExamDraft();var savedExam=(await api.Get<List<InterviewDeck>>("interviews")).Single(d=>d.Id==newExam.Id);
+            Check(savedExam.Questions[0].ReviewNote=="跳题前还未自动保存的内容。"&&savedExam.LastQuestionId==savedExam.Questions[^1].Id,"jumping saves the current review and records the last viewed question");
+            await Navigate("templates");await Navigate("exams");await WaitForExamLayout();await WaitForExamPosition(examTotal-1,examTotal);
+            Check(examDeckId==newExam.Id,"reopening the exam resumes the last viewed question");
+            examDeckId="";examQuestionIndex=0;await Navigate("templates");await Navigate("exams");await WaitForExamLayout();await WaitForExamPosition(examTotal-1,examTotal);
+            Check(examDeckId==newExam.Id,"a fresh session selects the most recently updated exam and its saved position");
             if(!string.IsNullOrWhiteSpace(actualExam)){
-                examQuestionIndex=examTotal-1;await Navigate("exams");await WaitForExamLayout();
                 sectionTitle=InteractionElement<TextBlock>(body,t=>t.Tag?.ToString()=="exam-section-title")!;questionTitle=InteractionElement<TextBlock>(body,t=>t.Tag?.ToString()=="exam-question-title")!;
                 Check(sectionTitle.Text.StartsWith("四、编程题")&&questionTitle.Text.StartsWith("3、")&&ExamTop(sectionTitle)<ExamTop(questionTitle)&&InteractionElement<TextBox>(body,t=>t.Tag?.ToString()=="exam-question-content") is null,"the actual last question shows the programming section above subquestion three without an empty duplicate content box");
-                await SaveNativePreview(Path.Combine(output,"exam-heading-hierarchy.png"));examQuestionIndex=0;await Navigate("exams");await WaitForExamLayout();
+                await SaveNativePreview(Path.Combine(output,"exam-heading-hierarchy.png"));
             }
+            jump=InteractionElement<ComboBox>(body,c=>c.Tag?.ToString()=="exam-question-picker")!;jump.SelectedIndex=0;await WaitForExamPosition(0,examTotal);
+            Check(InteractionElement<TextBox>(body,t=>t.Tag?.ToString()=="exam-review-note")!.Text=="跳题前还未自动保存的内容。","returning to the first question restores its previously saved note");
+            var changingNote=InteractionElement<TextBox>(body,t=>t.Tag?.ToString()=="exam-review-note")!;changingNote.Text="第一版草稿";var flushWhileTyping=FlushExamDraft();changingNote.Text="保存进行中继续输入的最新草稿";await flushWhileTyping;
+            Check((await api.Get<List<InterviewDeck>>("interviews")).Single(d=>d.Id==newExam.Id).Questions[0].ReviewNote=="保存进行中继续输入的最新草稿","flushing waits for edits made while an earlier draft save is in flight");
+            await Click("标记需要再练");await WaitForExamPosition(0,examTotal);
+            Check(InteractionElement<ComboBox>(body,c=>c.Tag?.ToString()=="exam-question-picker")!.SelectedItem?.ToString()?.Contains("需要再练")==true,"question navigator updates its status after a review mark");
             await Click("下一题 →");Check(InteractionElement<TextBlock>(body,t=>t.Tag?.ToString()=="exam-position")!.Text==$"2 / {examTotal}","newly imported exam advances within its full card set");
             await Navigate("templates");await Navigate("exams");await WaitForExamLayout();Check(examDeckId==newExam.Id,"returning to exam reviews keeps the newly imported deck selected");
             var multiNote=InteractionElement<TextBox>(body,t=>t.Tag?.ToString()=="exam-review-note")!;multiNote.Text="复盘第一行\n复盘第二行";await FlushExamDraft();
@@ -120,9 +137,25 @@ public sealed partial class MainWindow
             var remainingExams=(await api.Get<List<InterviewDeck>>("interviews")).Where(d=>d.StudyType=="exam").ToList();
             Check(remainingExams.Count==1&&remainingExams[0].Id==oldExam.Id&&remainingExams[0].Questions[0].ReviewNote=="旧复盘记录","confirmed deletion removes only the selected exam without an autosave recreating it");
             Check(examDeckId==oldExam.Id&&InteractionElement<TextBlock>(body,t=>t.Tag?.ToString()=="exam-position")!.Text=="1 / 4","deleting the selected exam falls back to the remaining deck");
+            oldExam.Title="复盘检索入口";oldExam=await api.Save("interviews",oldExam);await Navigate("templates");
+            var workspace=ShowWorkspaceTools();var searchDialog=await FeatureDialog("全局搜索");CheckBox? searchResult=null;
+            for(int attempt=0;attempt<100;attempt++){searchDialog.UpdateLayout();searchResult=InteractionElement<CheckBox>(searchDialog,c=>c.Content?.ToString()?.Contains("复盘检索入口")==true);if(searchResult is not null)break;await Task.Delay(50);}
+            if(searchResult is null)throw new Exception("Exam search result did not appear");searchResult.IsChecked=true;await FeatureClick(searchDialog,"打开选中记录");await workspace;await WaitForExamLayout();
+            Check(currentPage=="exams"&&examDeckId==oldExam.Id&&InteractionElement<TextBlock>(body,t=>t.Tag?.ToString()=="exam-position")!.Text=="1 / 4","global search opens an exam deck directly in exam review instead of interview study");
             deleting=DeleteExamReview(oldExam);confirm=await FeatureDialog("删除这份笔试复盘？");await FeatureClick(confirm,"确认");await deleting;await WaitForExamLayout();await Task.Delay(850);await FlushExamDraft();
             Check(!(await api.Get<List<InterviewDeck>>("interviews")).Any(d=>d.StudyType=="exam")&&examDeckId==""&&examDraftDeck is null&&!examDraftDirty&&FeatureButton(body,"删除复盘题库")?.IsEnabled==false,"deleting the last exam clears stale drafts and shows the empty state with deletion disabled");
             Check((await api.Get<List<InterviewDeck>>("interviews")).Count==imports.Count,"exam deletion preserves every interview study deck");
+            await Navigate("interviews");var interviewToDelete=(await api.Get<List<InterviewDeck>>("interviews")).Single(d=>d.Id==savedId);
+            await interviewSaveLock.WaitAsync();var bookmark=SaveInterviewBookmark(interviewToDelete,interviewToDelete.Questions[^1].Id);var interviewDeletion=DeleteInterviewDeck(interviewToDelete);
+            try{var interviewConfirm=await FeatureDialog("删除这份题库？");await FeatureClick(interviewConfirm,"确认");await Task.Delay(200);}
+            finally{interviewSaveLock.Release();}
+            await bookmark;await interviewDeletion;await Task.Delay(200);
+            await SaveInterviewBookmark(interviewToDelete,interviewToDelete.Questions[0].Id);
+            var afterInterviewDeletion=await api.Get<List<InterviewDeck>>("interviews");
+            Check(afterInterviewDeletion.All(d=>d.Id!=savedId)&&afterInterviewDeletion.Count==imports.Count-1,"deleting an interview deck blocks pending and late bookmarks while preserving the other decks");
+            var restoredInterview=await api.Save("interviews",interviewToDelete);await Navigate("templates");await Navigate("interviews");
+            await SaveInterviewBookmark(restoredInterview,restoredInterview.Questions[0].Id);
+            Check((await api.Get<List<InterviewDeck>>("interviews")).Single(d=>d.Id==savedId).LastQuestionId==restoredInterview.Questions[0].Id,"an interview deck restored with the same ID accepts bookmark updates again");
             await File.WriteAllTextAsync(Path.Combine(output,"interview-result.json"),JsonSerializer.Serialize(new{status="passed",checks},BackendClient.Json));
         }catch(Exception ex){await File.WriteAllTextAsync(Path.Combine(output,"interview-result.json"),JsonSerializer.Serialize(new{status="failed",checks,error=ex.ToString()},BackendClient.Json));}
         finally {await SaveCurrent();await DetachPreviewAsync(true);await api.StopAsync();closing=true;api.Dispose();Close();}
