@@ -54,7 +54,7 @@ public sealed partial class MainWindow
             password.Password="";address.Text=next.DirectoryUrl;settings=next;return next;
         }
         var actions=Row(8);
-        actions.Children.Add(Button("保存同步配置",async ()=> {await Configure();status.Text="已保存本机配置，密码按当前 Windows 用户加密。尚未执行同步。";}));
+        actions.Children.Add(Button("保存同步配置",async ()=> {await Configure();status.Text="已保存本机配置，密码按当前 Windows 用户加密。尚未执行同步。";},completionFeedback:true));
         actions.Children.Add(Button("检查并同步",async ()=>
         {
             if(syncBusy) return;

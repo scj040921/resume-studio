@@ -61,7 +61,7 @@ public sealed partial class MainWindow
         shell.RequestedTheme=darkStyle?ElementTheme.Dark:ElementTheme.Light;
         if(modernNavigation is not null) { modernNavigation.Content=null; modernNavigation=null; }
         shell.Children.Clear(); shell.ColumnDefinitions.Clear(); navigation.Clear();
-        modernNavigationItems.Clear(); classicChildMenus.Clear(); classicLabels.Clear(); classicChevrons.Clear();
+        modernNavigationItems.Clear(); classicChildMenus.Clear(); classicLabels.Clear(); classicUnderlines.Clear(); classicChevrons.Clear();
         classicSidebar=null; classicBrandName=null; classicBrandSubtitle=null; classicFooter=null;
         contentHost!.Resources.Clear();
         if(haruStyle)
@@ -117,6 +117,7 @@ public sealed partial class MainWindow
         {
             string key=(string)button.Tag;
             button.Background=Brush(key==selected?"#294267":key==activeParent?"#203653":"#14233F");
+            if(classicUnderlines.TryGetValue(key,out var underline))SetSelectionUnderline(underline,key==selected);
         }
         UpdateClassicNavigationGroups();
         if(modernNavigation is null) return;

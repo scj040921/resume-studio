@@ -94,8 +94,8 @@ public final class AcceptanceInstrumentation extends Instrumentation {
         awaitUi("state.page==='favorites'&&!pageTransitionActive&&!document.querySelector('[style*=view-transition-name]')");
         tapElement("#nav [data-page='interviews']");awaitUi("state.page==='interviews'&&!state.current&&!pageTransitionActive");
         tapElement("#content [data-action='study'][data-id]");awaitUi("!!document.querySelector('#study-answer-slot')&&!pageTransitionActive");
-        tapElement("[data-action='answer']");Thread.sleep(70);tapElement("[data-action='answer']");Thread.sleep(350);
-        if(!"true".equals(js("!state.answer&&!document.querySelector('#study-answer-slot').style.height&&!document.querySelector('#study-answer-slot').style.overflow")))throw new IOException("Touch answer reversal left a frozen card");
+        tapElement("[data-action='answer']");Thread.sleep(70);tapElement("[data-action='answer']");
+        awaitUi("!state.answer&&!document.querySelector('#study-answer-slot').style.height&&!document.querySelector('#study-answer-slot').style.overflow");
         JSONObject result=new JSONObject(report);JSONArray passed=result.getJSONArray("passed");
         passed.put("native rapid bottom-tab taps settle on the last requested page");passed.put("native card tap completes expansion and releases snapshot names");passed.put("native answer taps reverse expansion without a frozen height");
         result.put("count",passed.length());result.put("nativeTouchMotionChecks",3);return result.toString();

@@ -15,6 +15,40 @@ public sealed partial class MainWindow
     private readonly InfoBar feedback=new() {IsClosable=true,Margin=new Thickness(0,12,0,0)};
     private readonly DispatcherTimer feedbackTimer=new() {Interval=TimeSpan.FromSeconds(8)};
     private static bool Animate=>motionEnabled&&motionSettings.AnimationsEnabled;
+    private Windows.Foundation.Point? revealOrigin;
+    private long revealOriginTime;
+    private void RememberRevealOrigin(Windows.Foundation.Point point){revealOrigin=point;revealOriginTime=Environment.TickCount64;}
+    private Windows.Foundation.Point? TakeRevealOrigin(){var point=Environment.TickCount64-revealOriginTime<1200?revealOrigin:null;revealOrigin=null;return point;}
+    private static void RevealPage(FrameworkElement element,Windows.Foundation.Point? origin)
+    {
+        if(!Animate||origin is null)return;
+        if(element.ActualWidth<1||element.ActualHeight<1){
+            SizeChangedEventHandler? ready=null;ready=(_,_)=>{if(element.ActualWidth<1||element.ActualHeight<1)return;element.SizeChanged-=ready;RevealPage(element,origin);};element.SizeChanged+=ready;return;
+        }
+        var visual=ElementCompositionPreview.GetElementVisual(element);if(visual.Clip is not null)return;
+        float x=(float)origin.Value.X,y=(float)origin.Value.Y;
+        double farX=Math.Max(Math.Abs(x),Math.Abs(element.ActualWidth-x)),farY=Math.Max(Math.Abs(y),Math.Abs(element.ActualHeight-y));
+        float radius=(float)Math.Sqrt(farX*farX+farY*farY)+4;
+        var ellipse=visual.Compositor.CreateEllipseGeometry();ellipse.Center=new Vector2(x,y);ellipse.Radius=Vector2.Zero;
+        var clip=visual.Compositor.CreateGeometricClip(ellipse);visual.Clip=clip;
+        var animation=visual.Compositor.CreateVector2KeyFrameAnimation();animation.Duration=TimeSpan.FromMilliseconds(320);animation.InsertKeyFrame(1,new Vector2(radius),visual.Compositor.CreateCubicBezierEasingFunction(new Vector2(.2f,.75f),new Vector2(.25f,1)));ellipse.StartAnimation("Radius",animation);
+        _=ReleaseReveal(visual,clip);
+    }
+    private static async Task ReleaseReveal(Microsoft.UI.Composition.Visual visual,Microsoft.UI.Composition.CompositionClip clip)
+    {
+        await Task.Delay(350);try{if(ReferenceEquals(visual.Clip,clip))visual.Clip=null;}catch(System.Runtime.InteropServices.COMException){}
+    }
+    private static void InertialWheel(UIElement child,ScrollViewer scroll)
+    {
+        double target=0;long previous=0;
+        child.PointerWheelChanged+=(_,e)=>{
+            if(!Animate||e.KeyModifiers!=Windows.System.VirtualKeyModifiers.None)return;
+            var point=e.GetCurrentPoint(scroll);if(point.Properties.IsHorizontalMouseWheel)return;
+            int delta=point.Properties.MouseWheelDelta;if(delta==0||scroll.ScrollableHeight<=0)return;
+            long now=Environment.TickCount64;target=Math.Clamp((now-previous<280?target:scroll.VerticalOffset)-delta*.8,0,scroll.ScrollableHeight);previous=now;
+            if(Math.Abs(target-scroll.VerticalOffset)>.1&&scroll.ChangeView(null,target,null,false))e.Handled=true;
+        };
+    }
 
     private static void ScaleTo(FrameworkElement element,float scale,bool pressed=false)
     {
@@ -50,19 +84,43 @@ public sealed partial class MainWindow
     {
         panel.ChildrenTransitions=Animate?new TransitionCollection {new EntranceThemeTransition {IsStaggeringEnabled=false}}:new TransitionCollection();
     }
-    private async Task ExecuteButton(ButtonBase button,Func<Task> action)
+    private sealed class CompletionState {public object? Original;public int Revision;}
+    private static readonly System.Runtime.CompilerServices.ConditionalWeakTable<ButtonBase,CompletionState> completions=new();
+    private async Task ExecuteButton(ButtonBase button,Func<Task> action,bool showCompletion=false)
     {
         if(!button.IsEnabled)return;
-        object? original=(button as Button)?.Content;
+        var completion=completions.GetValue(button,_=>new CompletionState());int revision=++completion.Revision;
+        object? original=completion.Original??(button as Button)?.Content;completion.Original=null;
         button.IsEnabled=false;
+        bool succeeded=false;
         try {
             var running=action();
             if(await Task.WhenAny(running,Task.Delay(180))!=running&&button is Button regular) {
                 var status=Row(8);var label=Text(original?.ToString()??"处理中",14);label.Foreground=regular.Foreground;status.Children.Add(new ProgressRing {IsActive=true,Width=18,Height=18,Foreground=regular.Foreground});status.Children.Add(label);regular.Content=status;
             }
-            await running;
+            await running;succeeded=true;
         }
         finally {if(button is Button regular)regular.Content=original;button.IsEnabled=true;}
+        if(succeeded&&showCompletion&&button is Button completed){
+            completion.Original=original;completed.Content="✓ 已完成";
+            if(Animate){ScaleTo(completed,1.025f);_ = ResetCompletionScale(completed);}
+            _=RestoreCompletion(completed,completion,revision);
+        }
+    }
+    private static async Task ResetCompletionScale(Button button){await Task.Delay(160);ScaleTo(button,1);}
+    private static async Task RestoreCompletion(Button button,CompletionState completion,int revision){await Task.Delay(1200);if(completion.Revision!=revision)return;button.Content=completion.Original;completion.Original=null;}
+    private static void LinkedChoice(CheckBox choice,Control dependent,bool inverse=false)
+    {
+        void Apply(bool animate){bool enabled=(choice.IsChecked==true)!=inverse;dependent.IsEnabled=enabled;if(animate&&Animate){ScaleTo(dependent,enabled?1.015f:.985f);_ = ResetLinkedScale(dependent);}}
+        choice.Checked+=(_,_)=>Apply(true);choice.Unchecked+=(_,_)=>Apply(true);choice.Indeterminate+=(_,_)=>Apply(true);Apply(false);
+    }
+    private static async Task ResetLinkedScale(Control control){await Task.Delay(150);ScaleTo(control,1);}
+    private static void SetSelectionUnderline(Border underline,bool selected)
+    {
+        double target=selected?1:0;if(Math.Abs(underline.Opacity-target)<.001)return;
+        var visual=ElementCompositionPreview.GetElementVisual(underline);visual.StopAnimation("Opacity");
+        if(Animate){var animation=visual.Compositor.CreateScalarKeyFrameAnimation();animation.Duration=TimeSpan.FromMilliseconds(220);animation.InsertKeyFrame(1,(float)target);visual.StartAnimation("Opacity",animation);}else visual.Opacity=(float)target;
+        underline.Opacity=target;
     }
     private void InitializeFeedback()
     {
@@ -79,7 +137,12 @@ public sealed partial class MainWindow
     }
     private Expander Disclosure(string title,UIElement content,bool expanded=false,string? key=null)
     {
-        var expander=new Expander {Header=title,Content=content,IsExpanded=expanded,HorizontalAlignment=HorizontalAlignment.Stretch,HorizontalContentAlignment=HorizontalAlignment.Stretch};
+        var stack=new Grid {Margin=new Thickness(0,0,0,8)};
+        stack.Children.Add(new Border {Margin=new Thickness(12,6,12,-6),Background=PanelMaterial,BorderBrush=EdgeMaterial,BorderThickness=new Thickness(1),CornerRadius=new CornerRadius(10),Opacity=.45,IsHitTestVisible=false});
+        stack.Children.Add(new Border {Margin=new Thickness(6,3,6,-3),Background=PanelMaterial,BorderBrush=EdgeMaterial,BorderThickness=new Thickness(1),CornerRadius=new CornerRadius(10),Opacity=.7,IsHitTestVisible=false});
+        stack.Children.Add(new Border {Child=content,Padding=new Thickness(10),Background=PanelMaterial,BorderBrush=EdgeMaterial,BorderThickness=new Thickness(1),CornerRadius=new CornerRadius(10)});
+        var expander=new Expander {Header=title,Content=stack,IsExpanded=expanded,HorizontalAlignment=HorizontalAlignment.Stretch,HorizontalContentAlignment=HorizontalAlignment.Stretch};
+        expander.Expanding+=(_,_)=>{if(Animate){var visual=ElementCompositionPreview.GetElementVisual(stack);visual.Scale=new Vector3(.985f,.985f,1);ScaleTo(stack,1);}};
         if(key is not null)expander.Tag=key;
         ToolTipService.SetToolTip(expander,"点击展开或收起，也可以用空格键操作");
         return expander;

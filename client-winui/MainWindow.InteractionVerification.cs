@@ -7,6 +7,13 @@ namespace ResumeStudio;
 
 public sealed partial class MainWindow
 {
+    private async Task InteractionOnlyTest()
+    {
+        string output=Environment.GetEnvironmentVariable("RESUMESTUDIO_TEST_OUTPUT")??Path.Combine(api.DataDirectory,"interactions");Directory.CreateDirectory(output);var checks=new List<string>();
+        try{await VerifyInteractions(output,checks);await File.WriteAllTextAsync(Path.Combine(output,"interaction-result.json"),System.Text.Json.JsonSerializer.Serialize(new {status="passed",checks},BackendClient.Json));}
+        catch(Exception ex){await File.WriteAllTextAsync(Path.Combine(output,"interaction-result.json"),System.Text.Json.JsonSerializer.Serialize(new {status="failed",checks,error=ex.ToString()},BackendClient.Json));}
+        finally{Title="拾简 · 交互验证已结束（隔离数据）";}
+    }
     private static T? InteractionElement<T>(DependencyObject parent,Func<T,bool> predicate) where T:DependencyObject
     {
         if(parent is T match&&predicate(match))return match;
@@ -24,6 +31,15 @@ public sealed partial class MainWindow
         gate.SetResult();await busy;Check(button.IsEnabled&&button.Content?.ToString()=="交互测试","native button restores its label and enabled state after completion");
         try {await ExecuteButton(button,()=>throw new IOException("fixture failure"));}catch(IOException){}
         Check(button.IsEnabled&&button.Content?.ToString()=="交互测试","failed action also restores the native button");
+        await ExecuteButton(button,()=>Task.CompletedTask,true);
+        Check(button.Content?.ToString()=="✓ 已完成","successful opt-in action displays completion on its button");
+        await ExecuteButton(button,()=>Task.CompletedTask,true);await Task.Delay(1350);
+        Check(button.Content?.ToString()=="交互测试","repeated completion feedback restores the original label");
+        try {await ExecuteButton(button,()=>throw new IOException("fixture failure"),true);}catch(IOException){}
+        Check(button.Content?.ToString()=="交互测试","failed opt-in action never shows completion");
+        var choice=new CheckBox {IsChecked=false};var dependent=new Button();LinkedChoice(choice,dependent);Check(!dependent.IsEnabled,"unchecked linked option disables its dependent control");choice.IsChecked=true;Check(dependent.IsEnabled,"checked linked option enables its dependent control");choice.IsChecked=false;Check(!dependent.IsEnabled,"clearing linked option disables its dependent control again");
+        body.UpdateLayout();await Task.Delay(80);var pageVisual=ElementCompositionPreview.GetElementVisual(body);RevealPage(body,new Windows.Foundation.Point(20,20));
+        Check(!Animate||pageVisual.Clip is Microsoft.UI.Composition.CompositionGeometricClip,"native circular page reveal uses a geometric clip when motion is enabled");await Task.Delay(420);Check(pageVisual.Clip is null,"native page reveal releases its temporary clip");
         ScaleTo(button,1.035f);await Task.Delay(350);var scale=ElementCompositionPreview.GetElementVisual(button).Scale;
         Check(Math.Abs(scale.X-(Animate?1.035f:1))<.002,"actual composition scale animation reaches the requested hover state");
         motionEnabled=false;ScaleTo(button,1.035f);Check(ElementCompositionPreview.GetElementVisual(button).Scale.X==1,"reduced motion resets composition scale immediately");motionEnabled=preferences.MotionEnabled;
@@ -38,6 +54,7 @@ public sealed partial class MainWindow
         await SaveNativePreview(Path.Combine(output,"interaction-editor-classic.png"));
         var scheduled=await api.Save("schedule",new ScheduleItem {Title="准备二面材料",Kind="面试",StartAt=DateTimeOffset.Now.AddDays(1).ToString("O"),Notes="准备项目演示与岗位问题"});scheduleView=2;scheduleKind="面试";await Navigate("schedule");await Task.Delay(200);
         var disclosure=InteractionElement<Expander>(body,e=>e.Tag?.ToString()=="schedule:"+scheduled.Id)??throw new Exception("Schedule card disclosure missing");
+        Check(disclosure.Content is Grid layers&&layers.Children.Count==3,"expanded native details use a three-layer card without duplicating content");
         disclosure.IsExpanded=true;await Task.Delay(200);await Navigate("schedule");await Task.Delay(200);
         Check(InteractionElement<Expander>(body,e=>e.Tag?.ToString()=="schedule:"+scheduled.Id)?.IsExpanded==true,"expanded schedule details survive refresh");
         Check(FeatureButton(body,"＋ 笔试") is not null&&FeatureButton(body,"＋ 面试") is not null,"calendar exposes prefilled exam and interview quick creation actions");

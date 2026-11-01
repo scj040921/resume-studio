@@ -105,9 +105,9 @@ public sealed partial class MainWindow
         var kind=new ComboBox {Header="日程类型",ItemsSource=ScheduleService.Kinds,SelectedItem=item.Kind,HorizontalAlignment=HorizontalAlignment.Stretch};
         var at=DateTimeOffset.TryParse(item.StartAt,out var parsed)?parsed.ToLocalTime():DateTimeOffset.Now;
         var date=new CalendarDatePicker {Header="日期",Date=at,HorizontalAlignment=HorizontalAlignment.Stretch};var time=new TimePicker {Header="时间",ClockIdentifier="24HourClock",Time=at.TimeOfDay,HorizontalAlignment=HorizontalAlignment.Stretch};
-        var allDay=new CheckBox {Content="全天事项",IsChecked=item.AllDay}; time.IsEnabled=!item.AllDay; allDay.Checked+=(_,_)=>time.IsEnabled=false;allDay.Unchecked+=(_,_)=>time.IsEnabled=true;
+        var allDay=new CheckBox {Content="全天事项",IsChecked=item.AllDay}; LinkedChoice(allDay,time,inverse:true);
         var link=new ComboBox {Header="关联投递（可选）",ItemsSource=links,DisplayMemberPath="Title",SelectedItem=links.FirstOrDefault(r=>r.Id==item.ApplicationId)??links[0],HorizontalAlignment=HorizontalAlignment.Stretch};
-        var reminders=new CheckBox {Content="软件内提醒",IsChecked=item.ReminderEnabled};int[] minutes=[1440,60,15,0];var ahead=new ComboBox {Header="提醒时间",ItemsSource=new[] {"提前一天","提前一小时","提前 15 分钟","到点提醒"},SelectedIndex=Math.Max(0,Array.IndexOf(minutes,item.ReminderMinutes)),HorizontalAlignment=HorizontalAlignment.Stretch,IsEnabled=item.ReminderEnabled};reminders.Checked+=(_,_)=>ahead.IsEnabled=true;reminders.Unchecked+=(_,_)=>ahead.IsEnabled=false;
+        var reminders=new CheckBox {Content="软件内提醒",IsChecked=item.ReminderEnabled};int[] minutes=[1440,60,15,0];var ahead=new ComboBox {Header="提醒时间",ItemsSource=new[] {"提前一天","提前一小时","提前 15 分钟","到点提醒"},SelectedIndex=Math.Max(0,Array.IndexOf(minutes,item.ReminderMinutes)),HorizontalAlignment=HorizontalAlignment.Stretch};LinkedChoice(reminders,ahead);
         var notes=new TextBox {Header="备注／地点／会议链接",Text=item.Notes,MaxLength=10000,AcceptsReturn=true,TextWrapping=TextWrapping.Wrap,MinHeight=90};var completed=new CheckBox {Content="已完成",IsChecked=item.Completed};
         foreach(var element in new UIElement[] {title,kind,date,allDay,time,link,reminders,ahead,notes,completed}) panel.Children.Add(element);
         var dialog=SaveForm("编辑日程",panel,"保存日程",async ()=> {

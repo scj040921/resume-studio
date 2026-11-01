@@ -9,6 +9,7 @@ public sealed partial class MainWindow
     private readonly Dictionary<string, NavigationViewItem> modernNavigationItems = new();
     private readonly Dictionary<string, StackPanel> classicChildMenus = new();
     private readonly Dictionary<string, TextBlock> classicLabels = new();
+    private readonly Dictionary<string, Border> classicUnderlines = new();
     private readonly Dictionary<string, FontIcon> classicChevrons = new();
     private readonly HashSet<string> expandedNavigationGroups = new() { "discovery" };
     private Grid? classicSidebar;
@@ -47,6 +48,8 @@ public sealed partial class MainWindow
             var label = Text(node.Label, 14); label.Foreground = Brush("#CBD7EB");
             label.TextWrapping = TextWrapping.NoWrap; label.TextTrimming = TextTrimming.CharacterEllipsis;
             Grid.SetColumn(label, 1); content.Children.Add(label); classicLabels.Add(key, label);
+            var underline=new Border {Height=2,VerticalAlignment=VerticalAlignment.Bottom,HorizontalAlignment=HorizontalAlignment.Stretch,Margin=new Thickness(0,0,0,-5),CornerRadius=new CornerRadius(1),Background=Brush("#B7CBFF"),Opacity=0,IsHitTestVisible=false};
+            Grid.SetColumn(underline,1);content.Children.Add(underline);classicUnderlines.Add(key,underline);
             if(node.IsGroup)
             {
                 var chevron = new FontIcon { Glyph = "\uE70D", FontSize = 10 };

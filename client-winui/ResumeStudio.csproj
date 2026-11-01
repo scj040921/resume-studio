@@ -23,7 +23,7 @@
     <TrimMode Condition="'$(LightweightPublish)' == 'true'">partial</TrimMode>
     <JsonSerializerIsReflectionEnabledByDefault Condition="'$(LightweightPublish)' == 'true'">true</JsonSerializerIsReflectionEnabledByDefault>
     <BuiltInComInteropSupport Condition="'$(LightweightPublish)' == 'true'">true</BuiltInComInteropSupport>
-    <Version>0.9.11</Version>
+    <Version>0.9.12</Version>
     <DebugType>none</DebugType>
     <DebugSymbols>false</DebugSymbols>
   </PropertyGroup>

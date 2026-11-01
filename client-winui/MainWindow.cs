@@ -54,6 +54,7 @@ public sealed partial class MainWindow : Window
         searchShortcut.Invoked+=async (_,e)=>{e.Handled=true;await Run(()=>ShowWorkspaceTools());};shell.KeyboardAccelerators.Add(searchShortcut);
         SystemNotices.Activated+=()=>DispatcherQueue.TryEnqueue(()=>{Activate();_=Run(()=>Navigate("schedule"));});
         Content=shell;
+        shell.AddHandler(UIElement.PointerPressedEvent,new Microsoft.UI.Xaml.Input.PointerEventHandler((_,e)=>RememberRevealOrigin(e.GetCurrentPoint(pageHost).Position)),true);
         Activated+=(_,_)=> { if(haruStyle) NativeWindowGlass.Enable(WinRT.Interop.WindowNative.GetWindowHandle(this),darkStyle); };
         shell.Loaded+=async (_,_)=>await Run(Initialize);
         editTimer.Tick+=async (_,_)=> { editTimer.Stop(); await Run(SaveCurrent); };
@@ -93,12 +94,12 @@ public sealed partial class MainWindow : Window
         return field;
     }
     private static Border Card(UIElement child,Thickness? padding=null) => InteractiveCard(child,padding??new Thickness(22));
-    private Button Button(string label,Func<Task> action,bool primary=false)
+    private Button Button(string label,Func<Task> action,bool primary=false,bool completionFeedback=false)
     {
         var b=new Button { Content=label,Padding=new Thickness(15,9,15,9),CornerRadius=new CornerRadius(haruStyle?12:7),FontFamily=ResumeTypography.InterfaceFont };
         if(primary) { b.Background=Brush(Accent); b.Foreground=Brush("#FFFFFF"); }
         ButtonMotion(b); ToolTipService.SetToolTip(b,label);
-        b.Click+=async (_,_)=>await Run(()=>ExecuteButton(b,action)); return b;
+        b.Click+=async (_,_)=>await Run(()=>ExecuteButton(b,action,completionFeedback)); return b;
     }
     private async Task Run(Func<Task> action)
     {
@@ -130,6 +131,7 @@ public sealed partial class MainWindow : Window
         if(Environment.GetCommandLineArgs().Contains("--benchmark")) { await Benchmark(); return; }
         if(Environment.GetCommandLineArgs().Contains("--iteration-test")) { await IterationOnlyTest(); return; }
         if(Environment.GetCommandLineArgs().Contains("--feature-test")) { await FeatureTest(); return; }
+        if(Environment.GetCommandLineArgs().Contains("--interaction-test")) { await InteractionOnlyTest(); return; }
         if(Environment.GetCommandLineArgs().Contains("--navigation-test")) { await NavigationTest(); return; }
         if(Environment.GetCommandLineArgs().Contains("--capture-layout-test")) { await CaptureLayoutTest(); return; }
         if(Environment.GetCommandLineArgs().Contains("--favorites-editor-test")) { await FavoritesEditorTest(); return; }
@@ -160,6 +162,7 @@ public sealed partial class MainWindow : Window
     }
     private async Task Navigate(string page)
     {
+        var revealOrigin=TakeRevealOrigin();
         int version=++navigationRevision;
         // Let the triggering control finish handling input before replacing the page.
         await Task.Yield();
@@ -188,6 +191,7 @@ public sealed partial class MainWindow : Window
                 case "settings": ShowSettings(); break;
                 default: ShowAbout(); break;
             }
+            if(version==navigationRevision)RevealPage(body,revealOrigin);
         }
         finally { pageTransitionLock.Release(); }
     }
@@ -195,6 +199,7 @@ public sealed partial class MainWindow : Window
     private void FillScroll(UIElement child)
     {
         var scroll=new ScrollViewer { Content=child,HorizontalContentAlignment=HorizontalAlignment.Stretch,HorizontalScrollMode=ScrollMode.Disabled,HorizontalScrollBarVisibility=ScrollBarVisibility.Disabled,VerticalScrollBarVisibility=ScrollBarVisibility.Auto };
+        InertialWheel(child,scroll);
         scroll.SizeChanged+=(_,e)=> { if(child is FrameworkElement element) element.Width=Math.Max(0,e.NewSize.Width-16); };
         body.Children.Add(scroll);
     }
