@@ -65,7 +65,7 @@ public sealed partial class MainWindow
         ExtendsContentIntoTitleBar=haruStyle;
         glassDragRegions=[];
         if(!haruStyle) InputNonClientPointerSource.GetForWindowId(AppWindow.Id).ClearRegionRects(NonClientRegionKind.Caption);
-        headerFrame!.Margin=new Thickness(0,haruStyle?10:0,haruStyle?138:0,20);
+        UpdateGlassHeaderMargin();
         if(Microsoft.UI.Windowing.AppWindowTitleBar.IsCustomizationSupported())
         {
             var titleBar=AppWindow.TitleBar;
@@ -81,6 +81,16 @@ public sealed partial class MainWindow
         UpdateGlassDragRegions();
     }
 
+    private void UpdateGlassHeaderMargin()
+    {
+        if(headerFrame is null||contentHost is null)return;
+        double scale=shell.XamlRoot?.RasterizationScale??1;
+        double titleHeight=AppWindow.TitleBar.Height>0?AppWindow.TitleBar.Height/scale:32;
+        double top=haruStyle?Math.Max(10,titleHeight-contentHost.Margin.Top+8):0;
+        var margin=new Thickness(0,top,0,20);
+        if(headerFrame.Margin!=margin)headerFrame.Margin=margin;
+    }
+
     private void UpdateGlassDragRegions()
     {
         if(!haruStyle||shell.XamlRoot is null||headerFrame is null||!headerFrame.IsLoaded) return;
@@ -93,7 +103,8 @@ public sealed partial class MainWindow
         if(right>left) regions.Add(new RectInt32(left,0,right-left,(int)Math.Ceiling(32*scale)));
         var bounds=headerFrame.TransformToVisual(shell).TransformBounds(new Windows.Foundation.Rect(0,0,headerFrame.ActualWidth,headerFrame.ActualHeight));
         int x=Math.Max(0,(int)Math.Ceiling(bounds.X*scale)),y=Math.Max(0,(int)Math.Ceiling(bounds.Y*scale));
-        int end=Math.Min(right,(int)Math.Floor((bounds.X+bounds.Width)*scale)),bottom=(int)Math.Floor((bounds.Y+bounds.Height)*scale);
+        int headerRight=y>=AppWindow.TitleBar.Height?(int)Math.Floor(shell.ActualWidth*scale):right;
+        int end=Math.Min(headerRight,(int)Math.Floor((bounds.X+bounds.Width)*scale)),bottom=(int)Math.Floor((bounds.Y+bounds.Height)*scale);
         if(end>x&&bottom>y) regions.Add(new RectInt32(x,y,end-x,bottom-y));
         var next=regions.ToArray();
         if(glassDragRegions.SequenceEqual(next)) return;

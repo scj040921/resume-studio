@@ -105,6 +105,10 @@ public sealed partial class MainWindow
         var regions=InputNonClientPointerSource.GetForWindowId(AppWindow.Id).GetRegionRects(NonClientRegionKind.Caption);
         var scale=shell.XamlRoot.RasterizationScale;
         var header=headerFrame!.TransformToVisual(shell).TransformPoint(new Windows.Foundation.Point(headerFrame.ActualWidth/2,headerFrame.ActualHeight/2));
+        var headerBounds=headerFrame.TransformToVisual(shell).TransformBounds(new Windows.Foundation.Rect(0,0,headerFrame.ActualWidth,headerFrame.ActualHeight));
+        var pageBounds=pageHost.TransformToVisual(shell).TransformBounds(new Windows.Foundation.Rect(0,0,pageHost.ActualWidth,pageHost.ActualHeight));
+        if(Math.Abs(headerBounds.Left-pageBounds.Left)>1||Math.Abs(headerBounds.Right-pageBounds.Right)>1)throw new Exception("Haru header does not align with the page content");
+        if(headerBounds.Top*scale+1<AppWindow.TitleBar.Height)throw new Exception("Haru header overlaps window caption buttons");
         bool Contains(double x,double y)=>regions.Any(r=>x>=r.X&&x<r.X+r.Width&&y>=r.Y&&y<r.Y+r.Height);
         double right=shell.ActualWidth*scale-AppWindow.TitleBar.RightInset;
         if(!Contains((48*scale+right)/2,12*scale)||!Contains(header.X*scale,header.Y*scale)) throw new Exception("Native caption region missing from visible top edge or page header");

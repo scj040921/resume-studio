@@ -43,11 +43,11 @@ public sealed partial class MainWindow
     }
     private UIElement FormattingBar(TextBox input)
     {
-        var panel=new Grid {ColumnSpacing=5}; for(int i=0;i<4;i++) panel.ColumnDefinitions.Add(new ColumnDefinition {Width=new GridLength(1,GridUnitType.Star)});
+        var panel=new Grid {ColumnSpacing=5,Tag="editor-formatting-bar"}; for(int i=0;i<4;i++) panel.ColumnDefinitions.Add(new ColumnDefinition {Width=new GridLength(1,GridUnitType.Star)});
         int index=0;
         foreach(var item in new[] {("加粗","bold"),("列表","bullet"),("小标题","heading"),("表格","table")}) {
             var button=Button(item.Item1,async ()=> {if(item.Item2=="table"){await InsertContent(input,5);return;}var result=ResumeEditing.Format(NormalizeLines(input.Text),input.SelectionStart,input.SelectionLength,item.Item2); lastUndoCapture=DateTime.MinValue; input.Text=result.Text; input.Focus(FocusState.Programmatic); input.Select(result.Start,result.Length); });
-            button.Padding=new Thickness(4,7,4,7); Grid.SetColumn(button,index++); panel.Children.Add(button);
+            button.Padding=new Thickness(4,7,4,7);button.HorizontalAlignment=HorizontalAlignment.Stretch;button.HorizontalContentAlignment=HorizontalAlignment.Center;Grid.SetColumn(button,index++); panel.Children.Add(button);
             ToolTipService.SetToolTip(button,item.Item2=="bold"?"选中文本后加粗 · Ctrl+B":item.Item2=="bullet"?"将选中行切换为列表":item.Item2=="heading"?"插入经历标题与时间":"插入 Markdown 表格");
         }
         var bold=new KeyboardAccelerator {Key=VirtualKey.B,Modifiers=VirtualKeyModifiers.Control};

@@ -56,6 +56,8 @@ public sealed partial class MainWindow
         editorParts!.SelectedIndex=1;await Task.Delay(150);Check(editorContentCount?.Text.Contains("字符")==true,"module editor shows live character and line counts");
         await FocusPreviewSection();Check(await preview!.CoreWebView2.ExecuteScriptAsync("document.querySelector('section[data-resume-index=\"1\"]').textContent.includes('第二个模块')")=="true","preview anchoring identifies the selected module even with duplicate titles");
         var input=FindTextField(body,"内容")!;Check(input.KeyboardAccelerators.Any(a=>a.Key==Windows.System.VirtualKey.B),"content field exposes Ctrl+B formatting shortcut");
+        var format=InteractionElement<Grid>(body,g=>g.Tag?.ToString()=="editor-formatting-bar")??throw new Exception("Formatting toolbar missing");
+        var formatButtons=format.Children.OfType<Button>().ToList();Check(formatButtons.Count==4&&formatButtons.All(b=>b.HorizontalAlignment==HorizontalAlignment.Stretch&&b.HorizontalContentAlignment==HorizontalAlignment.Center)&&formatButtons.Max(b=>b.ActualWidth)-formatButtons.Min(b=>b.ActualWidth)<2,"formatting controls fill aligned equal-width columns");
         await SaveNativePreview(Path.Combine(output,"interaction-editor-classic.png"));
         var scheduled=await api.Save("schedule",new ScheduleItem {Title="准备二面材料",Kind="面试",StartAt=DateTimeOffset.Now.AddDays(1).ToString("O"),Notes="准备项目演示与岗位问题"});scheduleView=2;scheduleKind="面试";await Navigate("schedule");await Task.Delay(200);
         var disclosure=InteractionElement<Expander>(body,e=>e.Tag?.ToString()=="schedule:"+scheduled.Id)??throw new Exception("Schedule card disclosure missing");
@@ -73,7 +75,9 @@ public sealed partial class MainWindow
         await SaveNativePreview(Path.Combine(output,"interaction-schedule-classic.png"));
         var quick=EditSchedule(new ScheduleItem {Kind="笔试",StartAt=DateTimeOffset.Now.AddDays(2).ToString("O")});var dialog=await FeatureDialog("编辑日程");
         Check(FindCombo(dialog,"日程类型")?.SelectedItem?.ToString()=="笔试","quick schedule creation keeps the preselected event type");await FeatureClick(dialog,"取消");await quick;
-        preferences.InterfaceStyle="haru";preferences.Theme="light";await ApplyPreferences();await Navigate("schedule");await SaveNativePreview(Path.Combine(output,"interaction-schedule-haru.png"));
+        preferences.InterfaceStyle="haru";preferences.Theme="light";await ApplyPreferences();await Navigate("schedule");await VerifyGlassCaptionRegions();
+        var originalSize=AppWindow.Size;try{AppWindow.Resize(new Windows.Graphics.SizeInt32(800,700));await Task.Delay(220);await VerifyGlassCaptionRegions();}finally{AppWindow.Resize(originalSize);await Task.Delay(220);}
+        Check(true,"Haru header stays aligned, below caption buttons and draggable at regular and compact window sizes");await SaveNativePreview(Path.Combine(output,"interaction-schedule-haru.png"));
         await OpenEditor();editorParts!.SelectedIndex=1;await Task.Delay(180);await WaitForPreview();await SaveNativePreview(Path.Combine(output,"interaction-editor-haru.png"));
         var folder=await Windows.Storage.StorageFolder.GetFolderFromPathAsync(output);var browserImage=await folder.CreateFileAsync("interaction-live-preview.png",Windows.Storage.CreationCollisionOption.ReplaceExisting);
         using(var stream=await browserImage.OpenAsync(Windows.Storage.FileAccessMode.ReadWrite))await preview!.CoreWebView2.CapturePreviewAsync(Microsoft.Web.WebView2.Core.CoreWebView2CapturePreviewImageFormat.Png,stream);

@@ -31,6 +31,9 @@ public final class AcceptanceInstrumentation extends Instrumentation {
         try(InputStream in=getContext().getAssets().open("motion-acceptance.js")){js(new String(in.readAllBytes(),StandardCharsets.UTF_8));}
         if(animationOnly){String motionReport=verifyMotionFrames();results.putString("report",motionReport);finish(motionReport.contains("\"error\"")?1:0,results);return;}
         verifyBrowserSafeArea(a);
+        File alignmentDir=new File(getTargetContext().getExternalFilesDir(null),"acceptance");alignmentDir.mkdirs();
+        js("navigate('home');true");awaitUi("state.page==='home'&&!pageTransitionActive&&document.querySelectorAll('.home-grid .stat-card').length===6");capture(alignmentDir,"alignment-home.png");
+        js("navigate('templates');true");awaitUi("state.page==='templates'&&!pageTransitionActive&&document.querySelectorAll('.templates-grid .card').length===14");capture(alignmentDir,"alignment-templates.png");
         js("window.testDavPort="+JSONObject.quote(davPort));String script;try(InputStream in=getContext().getAssets().open("acceptance.js")){script=new String(in.readAllBytes(),java.nio.charset.StandardCharsets.UTF_8);}js(script);
         String report="null";for(int n=0;n<600;n++){report=js("window.acceptanceResult||null");if(!report.equals("null"))break;Thread.sleep(200);}
         report=verifyTouchMotion(report);

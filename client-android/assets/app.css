@@ -9,7 +9,7 @@ main{max-width:900px;padding:clamp(18px,4vw,30px) clamp(14px,4vw,24px) 126px}
 .hero{border-radius:var(--surface-radius);padding:clamp(20px,5vw,30px)}
 .card{border-radius:20px;padding:clamp(16px,4vw,22px);margin:14px 0;box-shadow:0 4px 18px #193a3010}
 button,input,textarea,select{border-radius:var(--control-radius)}
-button{min-height:46px;padding:10px 16px;font-weight:600;transition:transform .14s ease,filter .14s ease,box-shadow .14s ease}
+button{min-height:48px;padding:10px 16px;font-weight:600;transition:transform .14s ease,filter .14s ease,box-shadow .14s ease}
 button:active{transform:scale(.98)}
 button.primary{box-shadow:0 5px 13px color-mix(in srgb,var(--accent) 24%,transparent)}
 button.icon{min-width:44px;min-height:44px}
@@ -167,3 +167,22 @@ body.motion .study-card::before,body.motion .study-card::after{transition:transf
 @media(prefers-reduced-motion:reduce){body.motion button.completed{animation:none}body.motion #nav button::after,body.motion .study-card::before,body.motion .study-card::after{transition:none}}
 
 .study-card .study-question-body{position:relative;z-index:1}
+
+/* Keep all home metrics on the same visual grid and align variable-length template cards. */
+.home-grid .stat-card{display:flex;flex-direction:column;min-width:0}
+.home-grid .stat-label{color:var(--muted);font-size:13px;line-height:1.5;min-height:1.5em}
+.home-grid .stat-card .meta{margin-top:auto;padding-top:6px}
+.templates-grid .card{display:flex;flex-direction:column;min-width:0}
+.templates-grid .card h3{line-height:1.4;min-height:2.8em}
+.templates-grid .card .meta{flex:1}
+.templates-grid .card>small{display:block;margin-top:12px}
+.templates-grid .actions button{white-space:nowrap}
+@media(min-width:601px){
+ .hero .actions{display:grid;grid-template-columns:repeat(2,minmax(0,1fr))}
+ .hero .actions button{width:100%;min-width:0}
+}
+@media(max-width:600px){
+ .templates-grid .actions{grid-template-columns:minmax(0,1fr)}
+ .templates-grid .actions button{grid-column:1!important}
+}
+@media(max-width:380px){.templates-grid .card h3{min-height:4.2em}}

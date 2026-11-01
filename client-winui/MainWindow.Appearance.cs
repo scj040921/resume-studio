@@ -35,7 +35,7 @@ public sealed partial class MainWindow
         saveState.HorizontalAlignment=HorizontalAlignment.Right; saveState.VerticalAlignment=VerticalAlignment.Center; saveState.Margin=new Thickness(16,0,0,0); Grid.SetColumn(saveState,1); header.Children.Add(saveState);
         headerFrame=new Border { Child=header,Margin=new Thickness(0,0,0,20) }; contentHost.Children.Add(headerFrame);
         headerFrame.LayoutUpdated+=(_,_)=>UpdateGlassDragRegions();
-        shell.Loaded+=(_,_)=>shell.XamlRoot.Changed+=(_,_)=>UpdateGlassDragRegions();
+        shell.Loaded+=(_,_)=>shell.XamlRoot.Changed+=(_,_)=>{UpdateGlassHeaderMargin();UpdateGlassDragRegions();};
         shell.SizeChanged+=(_,e)=>UpdateClassicNavigationLayout(e.NewSize.Width);
         Grid.SetRow(notice,1); contentHost.Children.Add(notice);
         pageHost.Child=body; Grid.SetRow(pageHost,2); contentHost.Children.Add(pageHost);

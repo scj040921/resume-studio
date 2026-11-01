@@ -3,8 +3,12 @@ window.acceptanceResult=null;
  const passed=[];const ok=(v,name)=>{if(!v)throw new Error(name);passed.push(name);};
  try{
   await navigate('home');ok(document.querySelector('#content h1').textContent.includes('你好'),'home loads in production WebView');
+  const metrics=[...document.querySelectorAll('.home-grid .stat-card')],metricRects=metrics.map(el=>el.getBoundingClientRect()),columns=metricRects.filter(r=>Math.abs(r.top-metricRects[0].top)<1).length;ok(metrics.length===6&&[2,3].includes(columns)&&metricRects.every(r=>Math.abs(r.width-metricRects[0].width)<1)&&metricRects[columns].top-metricRects[0].bottom>=12&&Math.abs(metricRects[columns].left-metricRects[0].left)<1,'home metric cards align in one evenly spaced grid');
   const fontResponse=await fetch('fonts/MiSans-Regular.ttf');const fontBytes=await fontResponse.arrayBuffer();ok(fontBytes.byteLength===8122324,'bundled full MiSans font available');
   await navigate('templates');ok(document.querySelectorAll('.template-art').length===14,'all 14 templates');
+  const templateCards=[...document.querySelectorAll('.templates-grid .card')],templateActions=templateCards.slice(0,2).map(card=>card.querySelector('.actions').getBoundingClientRect());ok(Math.abs(templateActions[0].top-templateActions[1].top)<2&&Math.abs(templateCards[0].getBoundingClientRect().height-templateCards[1].getBoundingClientRect().height)<2,'template card actions align across the grid');
+  const rows=new Map();for(const card of templateCards){const rect=card.getBoundingClientRect(),key=Math.round(rect.top),top=card.querySelector('.meta').getBoundingClientRect().top;if(!rows.has(key))rows.set(key,[]);rows.get(key).push(top);}ok([...rows.values()].every(tops=>Math.max(...tops)-Math.min(...tops)<2),'template descriptions align within each row');
+  ok(templateCards.slice(0,2).flatMap(card=>[...card.querySelectorAll('.actions button')]).every(button=>{const range=document.createRange();range.selectNodeContents(button);return range.getClientRects().length===1&&button.scrollWidth<=button.clientWidth+1;}),'template action labels stay on one line without clipping');
   await actions.useTemplate({id:'gh-embedded-billryan'});ok(state.current.id,'create native persisted resume');
   const rid=state.current.id;state.current.title='安卓验收简历';state.current.profile.name='安卓测试';state.current.profile.role='嵌入式软件工程师';state.current.sections[0].content='## 测试大学 | 2023 - 2027\n- C/C++、Linux、LVGL 开发';state.dirty=true;await saveCurrent();
   await api('checkpoint',{id:rid});await actions.moveSection({index:'0',delta:'1'});await flush();

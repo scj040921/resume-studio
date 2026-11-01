@@ -28,7 +28,7 @@ try{
 if((Get-Content "$build\instrumentation.txt" -Raw) -match 'INSTRUMENTATION_RESULT: error=|INSTRUMENTATION_CODE: 1|Process crashed'){throw 'Production Android instrumentation failed'}
 New-Item -ItemType Directory -Force "$build\results"|Out-Null
 $reportFile=if($AnimationOnly){'motion-result.json'}else{'result.json'}
-$artifacts=if($AnimationOnly){@('motion-result.json','motion-final.png')}else{@('result.json','screen.png','dark-settings.png','light-settings.png','bottom-navigation.png','browser-safe-area.png','resume.pdf','resume-pdf.png')}
+$artifacts=if($AnimationOnly){@('motion-result.json','motion-final.png')}else{@('result.json','screen.png','dark-settings.png','light-settings.png','bottom-navigation.png','browser-safe-area.png','alignment-home.png','alignment-templates.png','resume.pdf','resume-pdf.png')}
 foreach($artifact in $artifacts){
     $temporary=Join-Path $build ('pulled-'+$artifact)
     & adb -s $Device pull ("/sdcard/Android/data/com.resumestudio.mobile/files/acceptance/"+$artifact) $temporary
