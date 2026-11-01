@@ -7,10 +7,10 @@ namespace ResumeStudio;
 
 public sealed partial class MainWindow
 {
-    private async Task InteractionOnlyTest()
+    private async Task InteractionOnlyTest(bool smoke=false)
     {
         string output=Environment.GetEnvironmentVariable("RESUMESTUDIO_TEST_OUTPUT")??Path.Combine(api.DataDirectory,"interactions");Directory.CreateDirectory(output);var checks=new List<string>();
-        try{await VerifyInteractions(output,checks);await File.WriteAllTextAsync(Path.Combine(output,"interaction-result.json"),System.Text.Json.JsonSerializer.Serialize(new {status="passed",checks},BackendClient.Json));}
+        try{if(smoke)await VerifyInteractionPrimitives(checks);else await VerifyInteractions(output,checks);await File.WriteAllTextAsync(Path.Combine(output,"interaction-result.json"),System.Text.Json.JsonSerializer.Serialize(new {status="passed",checks},BackendClient.Json));}
         catch(Exception ex){await File.WriteAllTextAsync(Path.Combine(output,"interaction-result.json"),System.Text.Json.JsonSerializer.Serialize(new {status="failed",checks,error=ex.ToString()},BackendClient.Json));}
         finally{Title="拾简 · 交互验证已结束（隔离数据）";}
     }
@@ -21,7 +21,7 @@ public sealed partial class MainWindow
             var found=InteractionElement(Microsoft.UI.Xaml.Media.VisualTreeHelper.GetChild(parent,i),predicate);if(found is not null)return found;
         }return null;
     }
-    private async Task VerifyInteractions(string output,List<string> checks)
+    private async Task VerifyInteractionPrimitives(List<string> checks)
     {
         void Check(bool ok,string label){if(!ok)throw new Exception(label);checks.Add(label);}
         var gate=new TaskCompletionSource();int calls=0;var button=Button("交互测试",()=>Task.CompletedTask);body.Children.Add(button);
@@ -43,6 +43,11 @@ public sealed partial class MainWindow
         ScaleTo(button,1.035f);await Task.Delay(350);var scale=ElementCompositionPreview.GetElementVisual(button).Scale;
         Check(Math.Abs(scale.X-(Animate?1.035f:1))<.002,"actual composition scale animation reaches the requested hover state");
         motionEnabled=false;ScaleTo(button,1.035f);Check(ElementCompositionPreview.GetElementVisual(button).Scale.X==1,"reduced motion resets composition scale immediately");motionEnabled=preferences.MotionEnabled;
+    }
+    private async Task VerifyInteractions(string output,List<string> checks)
+    {
+        void Check(bool ok,string label){if(!ok)throw new Exception(label);checks.Add(label);}
+        await VerifyInteractionPrimitives(checks);
         current=await api.Save("resumes",new Resume {Title="交互验证简历",Profile=new Profile {Name="交互测试",Role="嵌入式实习",Email="test@example.com"},Sections=[new() {Title="项目",Content="- 实现通信测试"},new() {Title="项目",Content="- 验证第二个模块"}]});dirty=false;await OpenEditor();await Task.Delay(180);
         var contact=InteractionElement<Expander>(body,e=>e.Header?.ToString()=="联系方式")??throw new Exception("Contact disclosure missing");
         var email=FindTextField(body,"邮箱")!;email.Text="saved@example.com";contact.IsExpanded=false;await Task.Delay(100);contact.IsExpanded=true;await Task.Delay(200);

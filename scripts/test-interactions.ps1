@@ -1,4 +1,4 @@
-param([string]$ApplicationPath='release/ResumeStudio/ResumeStudio.exe',[string]$OutputDirectory='')
+param([string]$ApplicationPath='release/ResumeStudio/ResumeStudio.exe',[string]$OutputDirectory='',[switch]$Smoke)
 $ErrorActionPreference='Stop'
 $root=Split-Path $PSScriptRoot -Parent
 if(!$OutputDirectory){$OutputDirectory=Join-Path $root ('artifacts/interactions-'+[guid]::NewGuid().ToString('N'))}
@@ -8,7 +8,8 @@ $savedData=$env:RESUMESTUDIO_TEST_DATA;$savedOutput=$env:RESUMESTUDIO_TEST_OUTPU
 try{
     $env:RESUMESTUDIO_TEST_DATA=Join-Path $OutputDirectory 'isolated-data';$env:RESUMESTUDIO_TEST_OUTPUT=$OutputDirectory
     $application=[IO.Path]::GetFullPath($(if([IO.Path]::IsPathRooted($ApplicationPath)){$ApplicationPath}else{Join-Path $root $ApplicationPath}))
-    $process=Start-Process -FilePath $application -ArgumentList '--interaction-test' -WindowStyle Hidden -PassThru
+    $testArgument=if($Smoke){'--interaction-smoke-test'}else{'--interaction-test'}
+    $process=Start-Process -FilePath $application -ArgumentList $testArgument -WindowStyle Hidden -PassThru
     $result=$null;$resultPath=Join-Path $OutputDirectory 'interaction-result.json'
     for($i=0;$i -lt 180;$i++){
         if(Test-Path -LiteralPath $resultPath){try{$result=Get-Content -LiteralPath $resultPath -Raw|ConvertFrom-Json;break}catch{}}
