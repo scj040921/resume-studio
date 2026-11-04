@@ -12,6 +12,7 @@ public sealed partial class MainWindow
     // Share materials across cards rather than creating a blur brush for every list item.
     private static Brush panelMaterial = new SolidColorBrush(Colors.White);
     private static Brush edgeMaterial = new SolidColorBrush(Colors.Transparent);
+    private static Brush navigationMaterial = new SolidColorBrush(Colors.Transparent);
     private static Brush PanelMaterial => haruStyle ? panelMaterial : Brush(Surface);
     private static Brush EdgeMaterial => haruStyle ? edgeMaterial : Brush(Stroke);
     private bool nativeGlass;
@@ -32,8 +33,8 @@ public sealed partial class MainWindow
         panelMaterial=new LinearGradientBrush {
             StartPoint=new Windows.Foundation.Point(0,0),EndPoint=new Windows.Foundation.Point(0,1),
             GradientStops={
-                new GradientStop {Color=((SolidColorBrush)Brush(darkStyle?"#601F2230":"#96FFFFFF")).Color,Offset=0},
-                new GradientStop {Color=((SolidColorBrush)Brush(darkStyle?"#38232634":"#60F5F6FB")).Color,Offset=1}
+                new GradientStop {Color=((SolidColorBrush)Brush(darkStyle?"#78262A3A":"#B8FFFFFF")).Color,Offset=0},
+                new GradientStop {Color=((SolidColorBrush)Brush(darkStyle?"#4830384A":"#78E9EDF8")).Color,Offset=1}
             }
         };
         edgeMaterial=new LinearGradientBrush {
@@ -43,13 +44,14 @@ public sealed partial class MainWindow
                 new GradientStop {Color=((SolidColorBrush)Brush(darkStyle?"#1FFFFFFF":"#55FFFFFF")).Color,Offset=1}
             }
         };
+        navigationMaterial=Brush(darkStyle?"#B61A1F30":"#BFD6DFEF");
     }
 
     private void ConfigureGlassNavigation(NavigationView nav)
     {
         foreach(string key in new[] {"NavigationViewContentBackground","NavigationViewExpandedPaneBackground","NavigationViewTopPaneBackground"})
             nav.Resources[key]=new SolidColorBrush(Colors.Transparent);
-        nav.Resources["NavigationViewDefaultPaneBackground"]=panelMaterial;
+        nav.Resources["NavigationViewDefaultPaneBackground"]=navigationMaterial;
         nav.Resources["NavigationViewContentGridBorderBrush"]=edgeMaterial;
         nav.Loaded+=(_,_)=>ApplyGlassHosts(nav);
         nav.PaneOpened+=(_,_)=>ApplyGlassHosts(nav);
@@ -119,7 +121,7 @@ public sealed partial class MainWindow
         {
             var child=VisualTreeHelper.GetChild(parent,i);
             if(child is Grid grid && grid.Name=="ContentGrid") grid.Background=new SolidColorBrush(Colors.Transparent);
-            if(child is SplitView split && split.Pane is Panel pane) pane.Background=panelMaterial;
+            if(child is SplitView split && split.Pane is Panel pane) pane.Background=navigationMaterial;
             ApplyGlassHosts(child);
         }
     }

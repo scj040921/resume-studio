@@ -324,3 +324,35 @@ body.motion .nav-symbol{transition:transform .16s cubic-bezier(.2,.75,.25,1)}
 body.motion #nav.dragging .nav-symbol{transition:none}
 @media(max-width:390px){.nav-label{font-size:10px}}
 @media(prefers-reduced-motion:reduce){body.motion .resume-stack[open] .resume-options,body.motion .study-drawer[open] .study-filter{animation:none}body.motion .study-fill,body.motion .nav-symbol,body.motion .study-drawer-arrow{transition:none}}
+
+/* Keep the glass layer quiet so the active task, not its frame, leads. */
+#content[data-route="home"] .overview-hero{margin-bottom:28px}
+.overview-section-heading{margin-bottom:14px}
+.overview-section-heading>span{font-size:12px;letter-spacing:0}
+.home-grid .stat-label{font-size:13px}
+.home-grid .stat-card .stat{font-size:26px;font-variant-numeric:tabular-nums}
+body:not(.classic) .overview-list{background:color-mix(in srgb,var(--card) 54%,transparent);box-shadow:inset 0 1px #ffffff65}
+body.dark:not(.classic) .overview-list{box-shadow:inset 0 1px #ffffff10}
+.overview-row:focus-visible{outline-offset:-2px}
+.overview-list .muted{line-height:1.7}
+.study-card .question{letter-spacing:0;line-height:1.5}
+.study-answer-content .answer{max-width:68ch;line-height:1.8}
+@media(hover:hover) and (pointer:fine){.overview-row:hover{color:var(--accent)}}
+
+/* A deeper glass surface distinguishes the active workspace from its canvas. */
+body:not(.classic){background:radial-gradient(ellipse at 8% 0%,color-mix(in srgb,var(--accent) 13%,transparent),transparent 42%),radial-gradient(ellipse at 95% 55%,color-mix(in srgb,#829caf 17%,transparent),transparent 48%),var(--bg)}
+body:not(.classic) .overview-hero{background:linear-gradient(145deg,color-mix(in srgb,var(--card) 84%,var(--tint)),color-mix(in srgb,var(--tint) 64%,transparent));border-color:color-mix(in srgb,var(--card) 82%,var(--line));box-shadow:inset 0 1px #ffffffb0,0 12px 30px #183d3019}
+body.dark:not(.classic) .overview-hero{background:linear-gradient(145deg,color-mix(in srgb,var(--card) 90%,var(--accent)),color-mix(in srgb,var(--card) 70%,transparent));border-color:#ffffff28;box-shadow:inset 0 1px #ffffff22,0 12px 30px #00000040}
+body.motion .overview-row{transition:color .18s ease,background-color .18s ease}
+body.motion .overview-row:active{background:color-mix(in srgb,var(--accent) 8%,transparent)}
+@media(prefers-reduced-motion:reduce){body.motion .overview-row{transition:none}}
+
+/* Let the record title lead; secondary actions remain grouped below it. */
+#list-items>.card{padding:16px 18px;margin:10px 0}
+body:not(.classic) #list-items>.card{background:color-mix(in srgb,var(--card) 58%,transparent);box-shadow:inset 0 1px #ffffff60}
+#list-items .list-primary{border-radius:8px;cursor:pointer}
+#list-items .list-primary:focus-visible{outline:2px solid var(--accent);outline-offset:4px}
+#list-items .list-primary h2{font-size:17px;font-weight:600;line-height:1.4}
+#list-items .list-primary .meta{margin:4px 0 0}
+#list-items>.card>.actions{margin-top:12px;padding-top:10px}
+@media(hover:hover) and (pointer:fine){#list-items .list-primary:hover h2{color:var(--accent)}}

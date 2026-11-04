@@ -31,22 +31,26 @@ public sealed partial class MainWindow
             for(int i=0;i<shortcuts.Length;i++){Grid.SetColumn(shortcuts[i],i%count);Grid.SetRow(shortcuts[i],i/count);}
         }
         quick.SizeChanged+=(_,e)=>ArrangeActions(e.NewSize.Width);ArrangeActions(520);
-        quick.Children.Add(actions);panel.Children.Add(Card(quick,new Thickness(18)));
+        quick.Children.Add(actions);var resumeCard=Card(quick,new Thickness(20));
 
         var metrics= new Grid {ColumnSpacing=8};
         foreach(var _ in Enumerable.Range(0,4))metrics.ColumnDefinitions.Add(new ColumnDefinition());
         var open=applications.Count(a=>!new[]{"已录用","已结束"}.Contains(a.Status));
-        var now=DateTimeOffset.Now;var due=schedule.Count(s=>!s.Completed&&s.ReminderEnabled&&DateTimeOffset.TryParse(s.StartAt,out var at)&&at.AddMinutes(-s.ReminderMinutes)<=now);
+        var due=schedule.Count(s=>!s.Completed);
         var questionList=decks.Where(d=>d.StudyType!="exam").SelectMany(d=>d.Questions).ToList();
         var reviewDue=questionList.Count(q=>q.Status!="remembered"||!DateTimeOffset.TryParse(q.NextReviewAt,out var next)||next<=DateTimeOffset.Now);
         var values=new[]{("简历",resumes.Count,"resumes"),("收藏职位",favorites.Count,"favorites"),("进行中投递",open,"applications"),("待处理日程",due,"schedule")};
         for(int i=0;i<values.Length;i++){
-            var(item,count,key)=values[i];var tile=Stack(4);var caption=Text(item+"  ↗",12);caption.Opacity=.72;tile.Children.Add(caption);tile.Children.Add(Text(count.ToString(),24,true));
+            var(item,count,key)=values[i];var tile=Stack(4);var caption=Text(item,12);caption.Opacity=.72;caption.TextWrapping=TextWrapping.NoWrap;caption.TextTrimming=TextTrimming.CharacterEllipsis;tile.Children.Add(caption);tile.Children.Add(Text(count.ToString(),24,true));
             var metric=Button(item,()=>Navigate(key));metric.Content=tile;metric.HorizontalAlignment=HorizontalAlignment.Stretch;metric.HorizontalContentAlignment=HorizontalAlignment.Left;
             metric.Background=Brush("#00000000");metric.BorderThickness=new Thickness(0);metric.Padding=new Thickness(12,8,12,8);
             Microsoft.UI.Xaml.Automation.AutomationProperties.SetName(metric,$"{item}，{count} 条");Grid.SetColumn(metric,i);metrics.Children.Add(metric);
         }
-        var progress=Stack(8);progress.Children.Add(Text("工作进度",16,true));progress.Children.Add(metrics);panel.Children.Add(Card(progress,new Thickness(18)));
+        var progress=Stack(8);progress.Children.Add(Text("工作进度",16,true));progress.Children.Add(metrics);var progressCard=Card(progress,new Thickness(20));
+        var overview=new Grid {ColumnSpacing=14,RowSpacing=14};overview.ColumnDefinitions.Add(new ColumnDefinition());overview.ColumnDefinitions.Add(new ColumnDefinition());overview.RowDefinitions.Add(new RowDefinition());overview.RowDefinitions.Add(new RowDefinition());
+        overview.Children.Add(resumeCard);overview.Children.Add(progressCard);
+        void ArrangeOverview(double width){bool wide=width>=900;overview.ColumnDefinitions[0].Width=wide?new GridLength(3,GridUnitType.Star):new GridLength(1,GridUnitType.Star);overview.ColumnDefinitions[1].Width=wide?new GridLength(2,GridUnitType.Star):new GridLength(0);Grid.SetColumn(progressCard,wide?1:0);Grid.SetRow(progressCard,wide?0:1);}
+        overview.SizeChanged+=(_,e)=>ArrangeOverview(e.NewSize.Width);ArrangeOverview(0);panel.Children.Add(overview);
 
         var columns=new Grid {ColumnSpacing=14};columns.ColumnDefinitions.Add(new ColumnDefinition());columns.ColumnDefinitions.Add(new ColumnDefinition());
         var next=Stack(10);next.Children.Add(Text("接下来的安排",18,true));
