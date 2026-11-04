@@ -1,7 +1,9 @@
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Input;
+using Microsoft.UI.Xaml.Hosting;
 using ResumeStudio.Services;
+using System.Numerics;
 using Windows.Storage.Pickers;
 using Windows.System;
 
@@ -37,7 +39,11 @@ public sealed partial class MainWindow
         toolbar.Children.Add(ToolbarField("题库",select));toolbar.Children.Add(ToolbarField("练习范围",filter));
         InterviewDeck? deck=decks.FirstOrDefault(d=>d.Id==interviewDeckId)??decks.FirstOrDefault();select.SelectedItem=deck;
         var remove=Button("删除题库",async ()=>{if(deck is not null)await DeleteInterviewDeck(deck);});remove.IsEnabled=deck is not null;toolbar.Children.Add(ToolbarField("",remove));
-        tools.Children.Add(toolbar);var stats=Text("",13,true);stats.Tag="interview-stats";tools.Children.Add(stats);tools.Margin=new Thickness(0,0,0,12);body.Children.Add(tools);
+        tools.Children.Add(toolbar);var stats=Text("",13,true);stats.Tag="interview-stats";stats.Margin=new Thickness(10,7,10,7);
+        var statsBox=new Grid {MinHeight=36};var statsFill=new Border {Background=Brush(Accent),Opacity=.14,CornerRadius=new CornerRadius(8),IsHitTestVisible=false,Tag="interview-progress-fill"};
+        statsBox.Children.Add(statsFill);statsBox.Children.Add(stats);tools.Children.Add(statsBox);
+        var statsVisual=ElementCompositionPreview.GetElementVisual(statsFill);statsVisual.CenterPoint=Vector3.Zero;statsVisual.Scale=new Vector3(0,1,1);
+        tools.Margin=new Thickness(0,0,0,12);body.Children.Add(tools);
         var host=new Border {MaxWidth=1040,HorizontalAlignment=HorizontalAlignment.Stretch,Tag="interview-card-host"};Grid.SetRow(host,1);body.Children.Add(host);
         var footer=Stack(8);footer.Margin=new Thickness(0,12,0,0);
         var arrows=Row();arrows.HorizontalAlignment=HorizontalAlignment.Center;
@@ -53,6 +59,9 @@ public sealed partial class MainWindow
         {
             if(!Alive())return;visible=deck is null?[]:InterviewProgress.Filter(deck,interviewFilter).ToList();interviewIndex=Math.Clamp(interviewIndex,0,Math.Max(0,visible.Count-1));
             var totals=InterviewProgress.Count(deck?.Questions??[]);stats.Text=$"共 {totals.Total} 题  ·  已记住 {totals.Remembered}  ·  未掌握 {totals.Learning}  ·  未标记 {totals.Unseen}";
+            float progress=totals.Total>0?(float)totals.Remembered/totals.Total:0;
+            if(Animate){var animation=statsVisual.Compositor.CreateScalarKeyFrameAnimation();animation.Duration=TimeSpan.FromMilliseconds(420);animation.InsertKeyFrame(1,progress);statsVisual.StartAnimation("Scale.X",animation);}
+            else {statsVisual.StopAnimation("Scale.X");statsVisual.Scale=new Vector3(progress,1,1);}
             previous.IsEnabled=!saving&&interviewIndex>0;next.IsEnabled=!saving&&interviewIndex+1<visible.Count;random.IsEnabled=!saving&&visible.Count>1;select.IsEnabled=!saving;filter.IsEnabled=!saving;remove.IsEnabled=!saving&&deck is not null;
             position.Text=visible.Count==0?"0 / 0":$"第 {interviewIndex+1} / {visible.Count} 题";
             if(visible.Count==0){var empty=Stack(12);empty.VerticalAlignment=VerticalAlignment.Center;empty.HorizontalAlignment=HorizontalAlignment.Center;empty.Children.Add(Text(deck is null?"导入你的第一份面试题文档":"这个练习范围暂时没有题目",22,true));empty.Children.Add(Text(deck is null?"支持 Markdown、TXT、DOCX 和文字型 PDF，按小标题生成题目卡片。":"可以切换到“全部题目”，重新复习或调整掌握状态。",14));host.Child=Card(empty);return;}

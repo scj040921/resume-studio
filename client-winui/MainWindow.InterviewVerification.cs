@@ -71,6 +71,8 @@ public sealed partial class MainWindow
             finally{interviewSaveLock.Release();}
             await WaitForInterviewPosition(1,2);var deck=(await api.Get<List<InterviewDeck>>("interviews")).Single(d=>d.Id==interviewDeckId);
             Check(deck.Questions[0].Status=="remembered"&&interviewIndex==1&&deck.LastQuestionId==deck.Questions[1].Id,"remembered verdict persists and bookmarks the second card after advancing");
+            await Task.Delay(500);var progressFill=InteractionElement<Border>(body,b=>b.Tag?.ToString()=="interview-progress-fill")??throw new Exception("Study progress background missing");
+            Check(Math.Abs(Microsoft.UI.Xaml.Hosting.ElementCompositionPreview.GetElementVisual(progressFill).Scale.X-.5f)<.03,"study background reflects saved mastery rather than the current question index");
             await Click("未掌握");deck=(await api.Get<List<InterviewDeck>>("interviews")).Single(d=>d.Id==interviewDeckId);
             Check(InterviewProgress.Count(deck.Questions)==new InterviewCounts(2,1,1,0),"both buttons produce separate persisted statistics");
             await Click("← 上一题");Check(interviewIndex==0,"mouse previous action returns to the first card");

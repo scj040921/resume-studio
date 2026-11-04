@@ -284,3 +284,43 @@ body .home-grid .stat-card:nth-last-child(-n+2){border-bottom:0}
  body .home-grid .stat-card:not(:nth-child(3n)){border-right:1px solid var(--overview-rule)}
  body .home-grid .stat-card:nth-last-child(-n+3){border-bottom:0}
 }
+
+/* Related resumes stay compact until the user asks to choose one. */
+.resume-stack{margin-top:16px;border-top:1px solid var(--overview-rule);padding-top:12px}
+.resume-stack summary{display:flex;align-items:center;gap:12px;cursor:pointer;list-style:none;min-height:44px;color:var(--ink);font-size:13px}
+.resume-stack summary::-webkit-details-marker{display:none}
+.resume-stack summary:focus-visible{outline:2px solid var(--accent);outline-offset:2px;border-radius:8px}
+.resume-stack summary small{margin-left:4px}
+.resume-overlap{display:flex;align-items:center;padding-left:5px}
+.resume-overlap span{display:grid;place-items:center;width:30px;height:30px;margin-left:-5px;border:2px solid var(--card);border-radius:50%;background:var(--tint);color:var(--accent);font-size:12px;font-weight:700}
+.resume-options{display:grid;gap:6px;padding:10px 0 0}
+.resume-options button{text-align:left;min-height:44px;overflow-wrap:anywhere}
+body.motion .resume-stack[open] .resume-options{animation:resume-options-in .2s ease both}
+@keyframes resume-options-in{from{opacity:0;transform:translateY(-5px)}to{opacity:1;transform:translateY(0)}}
+
+/* The fill reflects saved mastery, while the answer unfolds under its question. */
+.study-summary{position:relative;isolation:isolate;overflow:hidden}
+.study-fill{position:absolute;inset:0;z-index:-1;transform-origin:left center;background:color-mix(in srgb,var(--accent) 14%,transparent);pointer-events:none}
+body.motion .study-fill{transition:transform .42s cubic-bezier(.2,.75,.25,1),background-color .3s}
+.study-summary.is-complete .study-fill{background:color-mix(in srgb,var(--accent) 22%,transparent)}
+.study-drawer summary{display:flex;align-items:center;justify-content:space-between;gap:10px;min-height:44px;cursor:pointer;list-style:none}
+.study-drawer summary::-webkit-details-marker{display:none}
+.study-drawer summary:focus-visible{outline:2px solid var(--accent);outline-offset:2px;border-radius:8px}
+.study-drawer .meta{margin:0}
+.study-drawer-arrow{font-size:20px;line-height:1;color:var(--accent);transform:rotate(0deg)}
+.study-drawer[open] .study-drawer-arrow{transform:rotate(180deg)}
+.study-filter{padding:4px 0 2px}
+.study-filter label{margin:0 0 5px}
+body.motion .study-drawer-arrow{transition:transform .2s ease}
+body.motion .study-drawer[open] .study-filter{animation:resume-options-in .2s ease both}
+.study-card.expanded .study-answer-content{padding:12px 14px;border-radius:12px;background:color-mix(in srgb,var(--ink) 6%,var(--card))}
+body.dark .study-card.expanded .study-answer-content{background:color-mix(in srgb,var(--card) 76%,#000)}
+
+/* The lens stays fixed in the navigation geometry; only the symbols move. */
+#nav button{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px;padding-top:5px;padding-bottom:8px}
+.nav-symbol{width:16px;height:16px;flex:none;transform:translateX(var(--nav-shift,0px)) scale(var(--nav-scale,1));transform-origin:center;pointer-events:none}
+.nav-label{font-size:11px;line-height:1.15;white-space:nowrap}
+body.motion .nav-symbol{transition:transform .16s cubic-bezier(.2,.75,.25,1)}
+body.motion #nav.dragging .nav-symbol{transition:none}
+@media(max-width:390px){.nav-label{font-size:10px}}
+@media(prefers-reduced-motion:reduce){body.motion .resume-stack[open] .resume-options,body.motion .study-drawer[open] .study-filter{animation:none}body.motion .study-fill,body.motion .nav-symbol,body.motion .study-drawer-arrow{transition:none}}
