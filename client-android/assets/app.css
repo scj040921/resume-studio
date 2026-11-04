@@ -186,3 +186,32 @@ body.motion .study-card::before,body.motion .study-card::after{transition:transf
  .templates-grid .actions button{grid-column:1!important}
 }
 @media(max-width:380px){.templates-grid .card h3{min-height:4.2em}}
+
+/* A compact overview leaves room for the work itself on a small screen. */
+#content[data-route="home"] .hero{padding:clamp(18px,4vw,24px);margin-bottom:16px}
+#content[data-route="home"] .hero h1{font-size:clamp(21px,5.4vw,27px);line-height:1.35}
+#content[data-route="home"] .hero .eyebrow{letter-spacing:.08em}
+#content[data-route="home"] .hero .actions{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+#content[data-route="home"] .hero .actions button{grid-column:auto!important;width:100%;min-width:0;padding-inline:8px}
+.home-grid .stat-card{width:100%;align-items:flex-start;text-align:left;color:var(--ink);font-weight:400;min-height:120px;padding:16px;cursor:pointer}
+.home-grid .stat-card .stat{display:block;font-size:28px;margin:7px 0}
+.home-grid .stat-card .meta{font-size:12px}
+.home-grid .stat-card:focus-visible{outline:3px solid var(--accent);outline-offset:3px}
+@media (hover:hover){body.motion .home-grid .stat-card:hover{transform:translateY(-3px);border-color:var(--accent)}}
+@media (prefers-reduced-motion:no-preference){
+ body.motion .home-grid .stat-card{animation:home-card-arrive .38s cubic-bezier(.2,.75,.25,1) backwards}
+ body.motion .home-grid .stat-card:nth-child(2){animation-delay:35ms}
+ body.motion .home-grid .stat-card:nth-child(3){animation-delay:70ms}
+ body.motion .home-grid .stat-card:nth-child(4){animation-delay:105ms}
+ body.motion .home-grid .stat-card:nth-child(5){animation-delay:140ms}
+ body.motion .home-grid .stat-card:nth-child(6){animation-delay:175ms}
+ @keyframes home-card-arrive{from{opacity:0;transform:translateY(9px)}to{opacity:1;transform:translateY(0)}}
+}
+
+/* Shared legibility and focus states across the working screens. */
+body:not(.dark){--muted:#526b67}
+body:not(.dark).classic{--muted:#536582}
+button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.section-head{gap:12px}
+.section-head h2{min-width:0;line-height:1.35}
+input,select,textarea{line-height:1.5}

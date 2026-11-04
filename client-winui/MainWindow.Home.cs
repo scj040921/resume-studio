@@ -15,12 +15,14 @@ public sealed partial class MainWindow
         await Task.WhenAll(resumeTask,favoriteTask,applicationTask,scheduleTask,deckTask);
         if(!PageIsCurrent("home",generation))return;
         var resumes=resumeTask.Result;var favorites=favoriteTask.Result;var applications=applicationTask.Result;var schedule=scheduleTask.Result;var decks=deckTask.Result;
-        var panel=Stack(16);var actions=Row();
-        actions.Children.Add(Button("继续编辑简历",()=>Navigate("resumes"),true));
-        actions.Children.Add(Button("查看职位收藏",()=>Navigate("favorites")));
-        actions.Children.Add(Button("记录一次投递",()=>Navigate("applications")));
-        actions.Children.Add(Button("新增求职日程",()=>EditSchedule(new ScheduleItem {Title="",StartAt=DateTimeOffset.Now.AddDays(1).ToString("O")})));
-        panel.Children.Add(Card(actions,new Thickness(16)));
+        var panel=Stack(16);var quick=Stack(12);
+        quick.Children.Add(Text("快速开始",16,true));
+        var actions=new Grid {ColumnSpacing=10,RowSpacing=10};
+        actions.ColumnDefinitions.Add(new ColumnDefinition());actions.ColumnDefinitions.Add(new ColumnDefinition());
+        actions.RowDefinitions.Add(new RowDefinition());actions.RowDefinitions.Add(new RowDefinition());
+        var shortcuts=new[]{Button("继续编辑简历",()=>Navigate("resumes"),true),Button("查看职位收藏",()=>Navigate("favorites")),Button("记录一次投递",()=>Navigate("applications")),Button("新增求职日程",()=>EditSchedule(new ScheduleItem {Title="",StartAt=DateTimeOffset.Now.AddDays(1).ToString("O")}))};
+        for(int i=0;i<shortcuts.Length;i++){shortcuts[i].HorizontalAlignment=HorizontalAlignment.Stretch;shortcuts[i].HorizontalContentAlignment=HorizontalAlignment.Center;Grid.SetColumn(shortcuts[i],i%2);Grid.SetRow(shortcuts[i],i/2);actions.Children.Add(shortcuts[i]);}
+        quick.Children.Add(actions);panel.Children.Add(Card(quick,new Thickness(18)));
 
         var metrics= new Grid {ColumnSpacing=12};
         foreach(var _ in Enumerable.Range(0,4))metrics.ColumnDefinitions.Add(new ColumnDefinition());

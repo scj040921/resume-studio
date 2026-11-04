@@ -10,9 +10,19 @@ public sealed partial class MainWindow
     private async Task InteractionOnlyTest(bool smoke=false)
     {
         string output=Environment.GetEnvironmentVariable("RESUMESTUDIO_TEST_OUTPUT")??Path.Combine(api.DataDirectory,"interactions");Directory.CreateDirectory(output);var checks=new List<string>();
-        try{if(smoke)await VerifyInteractionPrimitives(checks);else await VerifyInteractions(output,checks);await File.WriteAllTextAsync(Path.Combine(output,"interaction-result.json"),System.Text.Json.JsonSerializer.Serialize(new {status="passed",checks},BackendClient.Json));}
+        try{if(smoke){await VerifyInteractionPrimitives(checks);await VerifyHomeShortcuts(output,checks);}else await VerifyInteractions(output,checks);await File.WriteAllTextAsync(Path.Combine(output,"interaction-result.json"),System.Text.Json.JsonSerializer.Serialize(new {status="passed",checks},BackendClient.Json));}
         catch(Exception ex){await File.WriteAllTextAsync(Path.Combine(output,"interaction-result.json"),System.Text.Json.JsonSerializer.Serialize(new {status="failed",checks,error=ex.ToString()},BackendClient.Json));}
         finally{Title="拾简 · 交互验证已结束（隔离数据）";}
+    }
+    private async Task VerifyHomeShortcuts(string output,List<string> checks)
+    {
+        await Navigate("home");await Task.Delay(250);body.UpdateLayout();
+        var labels=new[]{"继续编辑简历","查看职位收藏","记录一次投递","新增求职日程"};
+        var buttons=labels.Select(label=>FeatureButton(body,label)??throw new Exception("Home shortcut missing: "+label)).ToArray();
+        var bounds=buttons.Select(button=>button.TransformToVisual(body).TransformBounds(new Windows.Foundation.Rect(0,0,button.ActualWidth,button.ActualHeight))).ToArray();
+        if(bounds.Any(rect=>rect.Width<1)||Math.Abs(bounds[0].Width-bounds[1].Width)>2||Math.Abs(bounds[0].X-bounds[2].X)>2||Math.Abs(bounds[1].X-bounds[3].X)>2||bounds[2].Y<bounds[0].Bottom)throw new Exception("Home shortcuts are not aligned");
+        checks.Add("home shortcuts form aligned equal-width rows");
+        await SaveNativePreview(Path.Combine(output,"interaction-home.png"));
     }
     private static T? InteractionElement<T>(DependencyObject parent,Func<T,bool> predicate) where T:DependencyObject
     {
