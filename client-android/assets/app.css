@@ -215,3 +215,72 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
 .section-head{gap:12px}
 .section-head h2{min-width:0;line-height:1.35}
 input,select,textarea{line-height:1.5}
+
+/* Working surfaces: quiet glass, clear type, and fewer decorative boxes. */
+:root{--surface-radius:18px;--control-radius:12px;--overview-rule:color-mix(in srgb,var(--ink) 13%,transparent)}
+body{line-height:1.55}
+.appbar{min-height:calc(68px + var(--inset-top))}
+.brand{font-size:23px;letter-spacing:.08em;line-height:1.15}
+.brand span{font-size:8px;letter-spacing:.19em;margin-top:5px}
+h1,h2,h3{letter-spacing:.01em}
+h2{font-size:18px;line-height:1.35}
+body:not(.classic) .card,body:not(.classic) .hero{border-radius:var(--surface-radius);box-shadow:inset 0 1px #ffffff70,0 8px 24px #31594b0d}
+body:not(.classic).dark .card,body:not(.classic).dark .hero{box-shadow:inset 0 1px #ffffff10,0 8px 24px #00000024}
+#content[data-route="home"] .overview-hero{padding:22px;margin-bottom:24px}
+.overview-kicker{display:block;font-size:12px;font-weight:600;color:var(--accent);margin-bottom:9px}
+#content[data-route="home"] .overview-hero h1{font-size:clamp(22px,5.4vw,28px);line-height:1.3;margin-bottom:10px}
+.overview-hero p{font-size:14px;line-height:1.6;margin:0;color:var(--ink);overflow-wrap:anywhere}
+.overview-subtitle{display:block;color:var(--muted);font-size:12px;margin-top:2px}
+#content[data-route="home"] .overview-hero .actions{margin-top:18px}
+.overview-section{margin:0 0 24px}
+.overview-section-heading{display:flex;align-items:baseline;justify-content:space-between;gap:12px;margin:0 2px 12px}
+.overview-section-heading h2{margin:0}
+.overview-section-heading>span{color:var(--muted);font-size:12px}
+.home-grid{gap:12px}
+body:not(.classic) .home-grid .stat-card,.home-grid .stat-card{position:relative;min-height:104px;padding:14px 16px;border:1px solid var(--overview-rule);border-radius:14px;box-shadow:none;background:color-mix(in srgb,var(--card) 48%,transparent)}
+.home-grid .stat-card .stat{font-size:25px;margin:5px 0 2px;font-weight:600;line-height:1.2}
+.home-grid .stat-card .meta{padding-top:5px;color:var(--accent)}
+.overview-list{margin-top:16px;padding:18px 20px}
+.overview-list .section-head{margin-bottom:8px}
+.overview-list>h2{margin-bottom:8px}
+body:not(.classic) .overview-list .overview-row,.overview-list .overview-row{width:100%;display:flex;align-items:center;justify-content:space-between;gap:12px;text-align:left;background:transparent;border:0;border-top:1px solid var(--overview-rule);border-radius:0;box-shadow:none;padding:12px 0;color:var(--ink);font-weight:500}
+.overview-row span:first-child{min-width:0;overflow-wrap:anywhere}
+.overview-row small{display:block;margin-top:3px;font-weight:400}
+.overview-row>span:last-child{color:var(--muted);font-size:23px}
+@media(max-width:390px){#content[data-route="home"] .overview-hero{padding:18px}.overview-list{padding:16px}.home-grid .stat-card{padding:13px}}
+
+/* Lists and editors share a compact, task-first heading and control rhythm. */
+.page-title{font-size:clamp(23px,5vw,28px);line-height:1.3;margin:0 0 6px}
+.page-intro{font-size:13px;line-height:1.6;margin:0 0 18px}
+#list-items>.card{padding:18px 20px}
+#list-items>.card h2{font-size:17px;line-height:1.4;margin:0 0 5px}
+#list-items>.card .meta{line-height:1.55}
+#list-items>.card>.actions{border-top:1px solid var(--overview-rule);padding-top:12px}
+#list-items button[data-action="delete"]{color:var(--danger)}
+.templates-grid .template-art{height:110px;border-radius:10px;margin-bottom:14px}
+.templates-grid .card h3{font-size:16px;margin-top:10px}
+.templates-grid .badge{align-self:flex-start}
+@media(max-width:380px){
+ .templates-grid{grid-template-columns:minmax(0,1fr)}
+ .templates-grid .card{display:grid;grid-template-columns:88px minmax(0,1fr);grid-template-areas:"art badge" "art heading" "art description" "source source" "actions actions";column-gap:14px;row-gap:5px;align-content:start}
+ .templates-grid .template-art{grid-area:art;height:112px;margin:0;padding:15px 12px}
+ .templates-grid .badge{grid-area:badge;justify-self:start}
+ .templates-grid .card h3{grid-area:heading;min-height:0;margin:0}
+ .templates-grid .card .meta{grid-area:description;margin:0}
+ .templates-grid .card>small{grid-area:source;margin-top:7px}
+ .templates-grid .actions{grid-area:actions;grid-template-columns:repeat(2,minmax(0,1fr));margin-top:8px}
+ .templates-grid .actions button{grid-column:auto!important}
+}
+
+/* One glass overview, rather than six separate tiles. */
+.home-grid{gap:0;border:1px solid var(--overview-rule);border-radius:16px;overflow:hidden;background:color-mix(in srgb,var(--card) 40%,transparent)}
+body:not(.classic) .home-grid .stat-card,.home-grid .stat-card{min-height:88px;border:0;border-radius:0;border-bottom:1px solid var(--overview-rule);background:transparent;box-shadow:none;padding:14px 16px}
+body .home-grid .stat-card:nth-child(odd){border-right:1px solid var(--overview-rule)}
+body .home-grid .stat-card:nth-last-child(-n+2){border-bottom:0}
+.home-grid .stat-card .stat{margin:6px 0 0}
+.home-grid .stat-label span{color:var(--accent);padding-left:3px}
+@media(min-width:650px){
+ body .home-grid .stat-card:nth-child(odd){border-right:0}
+ body .home-grid .stat-card:not(:nth-child(3n)){border-right:1px solid var(--overview-rule)}
+ body .home-grid .stat-card:nth-last-child(-n+3){border-bottom:0}
+}

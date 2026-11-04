@@ -9,37 +9,51 @@ public sealed partial class MainWindow
     private async Task ShowHome()
     {
         int generation=navigationRevision;
-        Heading("求职首页","把简历、职位、投递和准备事项放到同一条行动线上。");
+        Heading("求职工作台","继续准备简历，查看安排与投递进度。");
         var resumeTask=api.Get<List<Resume>>("resumes");var favoriteTask=api.Get<List<Job>>("favorites");
         var applicationTask=api.Get<List<ApplicationRecord>>("applications");var scheduleTask=api.Get<List<ScheduleItem>>("schedule");var deckTask=api.Get<List<InterviewDeck>>("interviews");
         await Task.WhenAll(resumeTask,favoriteTask,applicationTask,scheduleTask,deckTask);
         if(!PageIsCurrent("home",generation))return;
         var resumes=resumeTask.Result;var favorites=favoriteTask.Result;var applications=applicationTask.Result;var schedule=scheduleTask.Result;var decks=deckTask.Result;
-        var panel=Stack(16);var quick=Stack(12);
-        quick.Children.Add(Text("快速开始",16,true));
-        var actions=new Grid {ColumnSpacing=10,RowSpacing=10};
-        actions.ColumnDefinitions.Add(new ColumnDefinition());actions.ColumnDefinitions.Add(new ColumnDefinition());
-        actions.RowDefinitions.Add(new RowDefinition());actions.RowDefinitions.Add(new RowDefinition());
-        var shortcuts=new[]{Button("继续编辑简历",()=>Navigate("resumes"),true),Button("查看职位收藏",()=>Navigate("favorites")),Button("记录一次投递",()=>Navigate("applications")),Button("新增求职日程",()=>EditSchedule(new ScheduleItem {Title="",StartAt=DateTimeOffset.Now.AddDays(1).ToString("O")}))};
-        for(int i=0;i<shortcuts.Length;i++){shortcuts[i].HorizontalAlignment=HorizontalAlignment.Stretch;shortcuts[i].HorizontalContentAlignment=HorizontalAlignment.Center;Grid.SetColumn(shortcuts[i],i%2);Grid.SetRow(shortcuts[i],i/2);actions.Children.Add(shortcuts[i]);}
+        var panel=Stack(18);var quick=Stack(12);
+        var latest=resumes.OrderByDescending(r=>r.UpdatedAt).FirstOrDefault();
+        quick.Children.Add(Text(latest is null?"从一份简历开始":"继续完善这份简历",20,true));
+        var resumeHint=Text(latest is null?"选择模板或导入 PDF，建立你的第一份简历。":latest.Title+"  ·  "+(latest.Profile.Role is {Length:>0} latestRole?latestRole:"待填写目标岗位"),13);
+        resumeHint.Opacity=.75;quick.Children.Add(resumeHint);
+        var actions=new Grid {ColumnSpacing=8,RowSpacing=8,HorizontalAlignment=HorizontalAlignment.Left};
+        var shortcuts=new[]{Button(latest is null?"新建简历":"继续编辑简历",()=>latest is null?Navigate("templates"):OpenRecentResume(latest),true),Button("查看职位收藏",()=>Navigate("favorites")),Button("记录一次投递",()=>Navigate("applications")),Button("新增求职日程",()=>EditSchedule(new ScheduleItem {Title="",StartAt=DateTimeOffset.Now.AddDays(1).ToString("O")}))};
+        foreach(var shortcut in shortcuts){shortcut.HorizontalAlignment=HorizontalAlignment.Stretch;shortcut.HorizontalContentAlignment=HorizontalAlignment.Center;actions.Children.Add(shortcut);}
+        int actionColumns=0;
+        void ArrangeActions(double available){
+            if(available<1)return;double width=Math.Min(760,available);actions.Width=width;int count=width<560?2:4;if(count==actionColumns)return;actionColumns=count;
+            actions.ColumnDefinitions.Clear();actions.RowDefinitions.Clear();for(int i=0;i<count;i++)actions.ColumnDefinitions.Add(new ColumnDefinition());
+            for(int i=0;i<(shortcuts.Length+count-1)/count;i++)actions.RowDefinitions.Add(new RowDefinition());
+            for(int i=0;i<shortcuts.Length;i++){Grid.SetColumn(shortcuts[i],i%count);Grid.SetRow(shortcuts[i],i/count);}
+        }
+        quick.SizeChanged+=(_,e)=>ArrangeActions(e.NewSize.Width);ArrangeActions(520);
         quick.Children.Add(actions);panel.Children.Add(Card(quick,new Thickness(18)));
 
-        var metrics= new Grid {ColumnSpacing=12};
+        var metrics= new Grid {ColumnSpacing=8};
         foreach(var _ in Enumerable.Range(0,4))metrics.ColumnDefinitions.Add(new ColumnDefinition());
         var open=applications.Count(a=>!new[]{"已录用","已结束"}.Contains(a.Status));
         var now=DateTimeOffset.Now;var due=schedule.Count(s=>!s.Completed&&s.ReminderEnabled&&DateTimeOffset.TryParse(s.StartAt,out var at)&&at.AddMinutes(-s.ReminderMinutes)<=now);
         var questionList=decks.Where(d=>d.StudyType!="exam").SelectMany(d=>d.Questions).ToList();
         var reviewDue=questionList.Count(q=>q.Status!="remembered"||!DateTimeOffset.TryParse(q.NextReviewAt,out var next)||next<=DateTimeOffset.Now);
         var values=new[]{("简历",resumes.Count,"resumes"),("收藏职位",favorites.Count,"favorites"),("进行中投递",open,"applications"),("待处理日程",due,"schedule")};
-        for(int i=0;i<values.Length;i++){var(item,count,key)=values[i];var tile=Stack(5);tile.Children.Add(Text(item,12));tile.Children.Add(Text(count.ToString(),26,true));tile.Children.Add(Button("打开 →",()=>Navigate(key)));var card=Card(tile,new Thickness(15));Grid.SetColumn(card,i);metrics.Children.Add(card);}
-        panel.Children.Add(metrics);
+        for(int i=0;i<values.Length;i++){
+            var(item,count,key)=values[i];var tile=Stack(4);var caption=Text(item+"  ↗",12);caption.Opacity=.72;tile.Children.Add(caption);tile.Children.Add(Text(count.ToString(),24,true));
+            var metric=Button(item,()=>Navigate(key));metric.Content=tile;metric.HorizontalAlignment=HorizontalAlignment.Stretch;metric.HorizontalContentAlignment=HorizontalAlignment.Left;
+            metric.Background=Brush("#00000000");metric.BorderThickness=new Thickness(0);metric.Padding=new Thickness(12,8,12,8);
+            Microsoft.UI.Xaml.Automation.AutomationProperties.SetName(metric,$"{item}，{count} 条");Grid.SetColumn(metric,i);metrics.Children.Add(metric);
+        }
+        var progress=Stack(8);progress.Children.Add(Text("工作进度",16,true));progress.Children.Add(metrics);panel.Children.Add(Card(progress,new Thickness(18)));
 
         var columns=new Grid {ColumnSpacing=14};columns.ColumnDefinitions.Add(new ColumnDefinition());columns.ColumnDefinitions.Add(new ColumnDefinition());
         var next=Stack(10);next.Children.Add(Text("接下来的安排",18,true));
         var upcoming=schedule.Where(s=>!s.Completed&&DateTimeOffset.TryParse(s.StartAt,out _)).OrderBy(s=>DateTimeOffset.Parse(s.StartAt)).Take(5).ToList();
         if(upcoming.Count==0)next.Children.Add(Text("暂无待办。可以从职位投递记录添加笔试、面试或跟进安排。",13));
         foreach(var item in upcoming)next.Children.Add(Button(item.Title+"  ·  "+item.Kind+"  ·  "+LocalDate(item.StartAt),()=>EditSchedule(item)));
-        var nextCard=Card(next);Grid.SetColumn(nextCard,0);columns.Children.Add(nextCard);
+        Grid.SetColumn(next,0);columns.Children.Add(next);
 
         var follow=Stack(10);follow.Children.Add(Text("需要跟进",18,true));
         var followUps=applications.Where(a=>!new[]{"已录用","已结束"}.Contains(a.Status))
@@ -51,10 +65,10 @@ public sealed partial class MainWindow
         var examQuestions=decks.Where(d=>d.StudyType=="exam").SelectMany(d=>d.Questions).ToList();
         int examDue=examQuestions.Count(q=>q.Status!="remembered");
         if(examDue>0)follow.Children.Add(Button($"笔试复盘 · {examDue} 道待完成",()=>Navigate("exams")));
-        var followCard=Card(follow);Grid.SetColumn(followCard,1);columns.Children.Add(followCard);panel.Children.Add(columns);
-        panel.Children.Add(Text("最近修改的简历",18,true));
-        foreach(var resume in resumes.OrderByDescending(r=>r.UpdatedAt).Take(3))panel.Children.Add(Button(resume.Title+"  ·  "+(resume.Profile.Role is {Length:>0} role?role:"待填写目标岗位")+"  ·  "+LocalDate(resume.UpdatedAt),async ()=>{current=resume;dirty=false;await OpenEditor();}));
-        if(resumes.Count==0)panel.Children.Add(Card(Text("导入 PDF 简历，或从模板中心新建第一份简历。",14)));
+        Grid.SetColumn(follow,1);columns.Children.Add(follow);panel.Children.Add(Card(columns));
+        if(resumes.Count>1){panel.Children.Add(Text("最近修改的简历",18,true));
+            foreach(var resume in resumes.OrderByDescending(r=>r.UpdatedAt).Skip(1).Take(3))panel.Children.Add(Button(resume.Title+"  ·  "+(resume.Profile.Role is {Length:>0} role?role:"待填写目标岗位")+"  ·  "+LocalDate(resume.UpdatedAt),async ()=>{current=resume;dirty=false;await OpenEditor();}));}
         FillScroll(panel);
     }
+    private Task OpenRecentResume(Resume resume){current=resume;dirty=false;return OpenEditor();}
 }

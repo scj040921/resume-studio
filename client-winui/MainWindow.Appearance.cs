@@ -74,10 +74,10 @@ public sealed partial class MainWindow
         ConfigureWindowMaterial();
         contentHost!.Margin=haruStyle?new Thickness(22,18,22,18):new Thickness(30,26,30,22);
         pageTitle.Foreground=Brush(Ink); pageSubtitle.Foreground=Brush(darkStyle?"#B1B1C3":"#697086"); saveState.Foreground=Brush(darkStyle?"#9FB2E5":"#167D78");
-        headerFrame!.Padding=haruStyle?new Thickness(20,15,20,15):new Thickness(0);
-        headerFrame.CornerRadius=new CornerRadius(haruStyle?22:0);
-        headerFrame.BorderThickness=new Thickness(haruStyle?1:0); headerFrame.BorderBrush=EdgeMaterial;
-        headerFrame.Background=haruStyle?PanelMaterial:new SolidColorBrush(Colors.Transparent);
+        headerFrame!.Padding=haruStyle?new Thickness(18,12,18,12):new Thickness(0);
+        headerFrame.CornerRadius=new CornerRadius(haruStyle?16:0);
+        headerFrame.BorderThickness=new Thickness(0); headerFrame.BorderBrush=EdgeMaterial;
+        headerFrame.Background=new SolidColorBrush(Colors.Transparent);
         previewTimer.Interval=TimeSpan.FromMilliseconds(preferences.PreviewDelayMs);
         if(haruStyle)
         {

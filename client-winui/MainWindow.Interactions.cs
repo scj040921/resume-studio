@@ -63,10 +63,10 @@ public sealed partial class MainWindow
     private static void ButtonMotion(ButtonBase button)
     {
         bool over=false;
-        button.PointerEntered+=(_,_)=> {over=true;if(button.IsEnabled)ScaleTo(button,1.035f);};
+        button.PointerEntered+=(_,_)=> {over=true;if(button.IsEnabled)ScaleTo(button,1.008f);};
         button.PointerExited+=(_,_)=> {over=false;ScaleTo(button,1);};
-        button.PointerPressed+=(_,_)=> {if(button.IsEnabled)ScaleTo(button,.965f,true);};
-        button.PointerReleased+=(_,_)=>ScaleTo(button,over&&button.IsEnabled?1.035f:1);
+        button.PointerPressed+=(_,_)=> {if(button.IsEnabled)ScaleTo(button,.99f,true);};
+        button.PointerReleased+=(_,_)=>ScaleTo(button,over&&button.IsEnabled?1.008f:1);
         button.PointerCanceled+=(_,_)=>ScaleTo(button,1);
         button.PointerCaptureLost+=(_,_)=>ScaleTo(button,1);
         button.LostFocus+=(_,_)=> {if(!over)ScaleTo(button,1);};
