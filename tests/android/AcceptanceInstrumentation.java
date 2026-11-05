@@ -70,6 +70,11 @@ public final class AcceptanceInstrumentation extends Instrumentation {
         if(report.equals("null"))throw new IOException("Motion frame acceptance timed out");
         report=verifyTouchMotion(report);
         capture(dir,"motion-final.png");
+        js("setTheme({theme:'light',interfaceStyle:'haru',motionEnabled:true});renderPage('home',{lists:[[{id:'visual-a',title:'嵌入式校招简历',profile:{role:'嵌入式软件工程师'}},{id:'visual-b',title:'实习岗位简历',profile:{role:'嵌入式实习'}},{id:'visual-c',title:'通用简历',profile:{role:'软件开发'}}],[],[],[]],decks:[]});window.scrollTo(0,0);true");Thread.sleep(250);
+        capture(dir,"resume-stack-closed.png");
+        js("document.querySelector('.resume-stack summary').dispatchEvent(new MouseEvent('click',{bubbles:true,cancelable:true,detail:1}));true");Thread.sleep(330);
+        capture(dir,"resume-stack-open.png");
+
         try(FileOutputStream output=new FileOutputStream(new File(dir,"motion-result.json"))){output.write(report.getBytes(StandardCharsets.UTF_8));}
         return report;
     }

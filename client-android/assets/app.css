@@ -379,3 +379,20 @@ body.motion .overlay:not([hidden]) .modal{animation:dialog-arrive 180ms var(--ea
 @keyframes dialog-arrive{from{opacity:0;transform:translateY(8px) scale(.98)}to{opacity:1;transform:none}}
 @media(max-width:420px){.toolbar input{flex-basis:100%}.toolbar>button{flex:1}.actions>button{max-width:100%}.modal{padding:18px;max-height:88dvh}.overlay{padding:12px}.empty-state{padding:20px}}
 @media(prefers-reduced-motion:reduce){body.motion .overlay:not([hidden]) .modal{animation:none}}
+
+/* Touch feedback comes from the component, never the WebView's blue overlay. */
+button,a,summary,[role="button"],label.check,input,select,textarea{-webkit-tap-highlight-color:transparent}
+button:focus:not(:focus-visible),summary:focus:not(:focus-visible),[role="button"]:focus:not(:focus-visible),a:focus:not(:focus-visible){outline:none}
+.resume-stack summary{border-radius:8px;user-select:none}
+.resume-stack summary:active{background:color-mix(in srgb,var(--ink) 5%,transparent)}
+body.motion .resume-overlap span{transition:transform 180ms var(--ease-out)}
+.resume-stack[open] .resume-overlap span:nth-child(2){transform:translateX(5px)}
+.resume-stack[open] .resume-overlap span:nth-child(3){transform:translateX(10px)}
+.resume-options{gap:8px;padding:14px 2px 4px}
+body.motion .resume-stack[open] .resume-options{animation:none}
+.resume-options .resume-option{display:flex;align-items:center;gap:12px;width:100%;min-height:66px;padding:12px;text-align:left;background:var(--card);border:1px solid var(--line);border-radius:10px;transform-origin:top center}
+.resume-option-avatar{display:grid;place-items:center;flex:0 0 36px;height:36px;border-radius:50%;background:var(--tint);color:var(--accent);font-weight:600}
+.resume-option-name{min-width:0;flex:1;overflow-wrap:anywhere;font-size:14px;line-height:1.5}
+.resume-option-name small{display:block;font-size:12px;font-weight:400;margin-top:2px}
+.resume-option-arrow{color:var(--muted);font-size:17px}
+@media(prefers-reduced-motion:reduce){.resume-overlap span{transition:none}}
