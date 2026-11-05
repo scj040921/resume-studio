@@ -97,7 +97,7 @@ public sealed partial class MainWindow : Window
     private static Border Card(UIElement child,Thickness? padding=null) => InteractiveCard(child,padding??new Thickness(20));
     private Button Button(string label,Func<Task> action,bool primary=false,bool completionFeedback=false)
     {
-        var b=new Button { Content=label,Padding=new Thickness(14,8,14,8),MinHeight=40,CornerRadius=new CornerRadius(8),FontFamily=ResumeTypography.InterfaceFont };
+        var b=new Button { Content=label,Padding=new Thickness(16,9,16,9),MinHeight=42,CornerRadius=new CornerRadius(14),FontFamily=ResumeTypography.InterfaceFont };
         if(primary) { b.Background=Brush(darkStyle?"#DCE9E2":"#263F38"); b.Foreground=Brush(darkStyle?"#1E2924":"#FFFFFF"); }
         ButtonMotion(b); ToolTipService.SetToolTip(b,label);
         b.Click+=async (_,_)=>await Run(()=>ExecuteButton(b,action,completionFeedback)); return b;

@@ -16,7 +16,7 @@ button.icon{min-width:44px;min-height:44px}
 input,textarea,select{min-height:48px;padding:11px 13px;background:var(--card)}
 textarea{min-height:132px}
 .actions{gap:9px;margin-top:14px}
-.actions button{flex:0 1 auto}
+.actions :is(button,fluent-button){flex:0 1 auto}
 .toolbar{gap:10px}
 .toolbar>*{min-width:0}
 .question{font-size:clamp(21px,5vw,27px);line-height:1.55;letter-spacing:.01em}
@@ -31,7 +31,7 @@ nav button.active{box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--accent) 10%
 .grid{gap:14px}
 .badge{border-radius:999px;padding:4px 10px}
 .photo-thumb,.preview-frame{border-radius:14px}
-@media(max-width:390px){body{font-size:14px}main{padding-left:13px;padding-right:13px}.appbar{height:70px}.brand{font-size:23px}.card{padding:15px}.actions button{padding-left:12px;padding-right:12px}nav{width:calc(100% - 18px);gap:1px}nav button{font-size:12px;padding-left:2px;padding-right:2px}}
+@media(max-width:390px){body{font-size:14px}main{padding-left:13px;padding-right:13px}.appbar{height:70px}.brand{font-size:23px}.card{padding:15px}.actions :is(button,fluent-button){padding-left:12px;padding-right:12px}nav{width:calc(100% - 18px);gap:1px}nav button{font-size:12px;padding-left:2px;padding-right:2px}}
 @media(prefers-reduced-motion:reduce){*,*::before,*::after{scroll-behavior:auto!important;animation-duration:.01ms!important;transition-duration:.01ms!important}}
 
 /* Android edge-to-edge: native insets feed CSS in dp so content clears cutouts and gestures. */
@@ -90,8 +90,8 @@ body:not(.classic).dark button:not(.primary){border-color:#ffffff1c;box-shadow:i
 @media(max-width:600px){
  .appbar button.icon{display:none}
  .actions{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));align-items:stretch;gap:9px}
- .actions button{width:100%;min-height:52px;padding-left:10px;padding-right:10px;}
- .actions button:only-child{grid-column:1/-1}
+ .actions :is(button,fluent-button){width:100%;min-height:52px;padding-left:10px;padding-right:10px;}
+ .actions :is(button,fluent-button):only-child{grid-column:1/-1}
  .actions>small{grid-column:1/-1;text-align:center;align-self:center}
  .actions>:last-child:nth-child(odd){grid-column:1/-1}
  #pagination{display:flex;grid-template-columns:none;flex-wrap:nowrap;align-items:center;justify-content:space-between;gap:8px}
@@ -99,14 +99,14 @@ body:not(.classic).dark button:not(.primary){border-color:#ffffff1c;box-shadow:i
  #pagination small{flex:0 0 auto;min-width:72px;text-align:center;white-space:nowrap}
  .toolbar{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));align-items:stretch}
  .toolbar input{grid-column:1/-1;min-height:52px}
- .toolbar button{width:100%;min-width:0;min-height:52px}
+ .toolbar :is(button,fluent-button){width:100%;min-width:0;min-height:52px}
  .toolbar .save-status{grid-column:1/-1;text-align:center;align-self:center}
  .row{flex-wrap:wrap;gap:8px}
  .row>*{flex:1 1 calc(50% - 8px)}
  .row button{min-height:50px}
  summary,details summary{padding:10px 2px;min-height:44px;display:flex;align-items:center}
 }
-@media(max-width:360px){.actions{grid-template-columns:minmax(0,1fr)}.actions button{grid-column:1!important}.toolbar{grid-template-columns:minmax(0,1fr)}.toolbar button{width:100%}}
+@media(max-width:360px){.actions{grid-template-columns:minmax(0,1fr)}.actions :is(button,fluent-button){grid-column:1!important}.toolbar{grid-template-columns:minmax(0,1fr)}.toolbar :is(button,fluent-button){width:100%}}
 .update-error{color:var(--danger);padding:10px 12px;border-radius:12px;background:color-mix(in srgb,var(--danger) 9%,var(--card));}
 
 /* Static lens lighting preserves glass depth without re-running displacement on every moving frame. */
@@ -176,14 +176,14 @@ body.motion .study-card::before,body.motion .study-card::after{transition:transf
 .templates-grid .card h3{line-height:1.4;min-height:2.8em}
 .templates-grid .card .meta{flex:1}
 .templates-grid .card>small{display:block;margin-top:12px}
-.templates-grid .actions button{white-space:nowrap}
+.templates-grid .actions :is(button,fluent-button){white-space:nowrap}
 @media(min-width:601px){
  .hero .actions{display:grid;grid-template-columns:repeat(2,minmax(0,1fr))}
- .hero .actions button{width:100%;min-width:0}
+ .hero .actions :is(button,fluent-button){width:100%;min-width:0}
 }
 @media(max-width:600px){
  .templates-grid .actions{grid-template-columns:minmax(0,1fr)}
- .templates-grid .actions button{grid-column:1!important}
+ .templates-grid .actions :is(button,fluent-button){grid-column:1!important}
 }
 @media(max-width:380px){.templates-grid .card h3{min-height:4.2em}}
 
@@ -192,7 +192,7 @@ body.motion .study-card::before,body.motion .study-card::after{transition:transf
 #content[data-route="home"] .hero h1{font-size:clamp(21px,5.4vw,27px);line-height:1.35}
 #content[data-route="home"] .hero .eyebrow{letter-spacing:.08em}
 #content[data-route="home"] .hero .actions{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
-#content[data-route="home"] .hero .actions button{grid-column:auto!important;width:100%;min-width:0;padding-inline:8px}
+#content[data-route="home"] .hero .actions :is(button,fluent-button){grid-column:auto!important;width:100%;min-width:0;padding-inline:8px}
 .home-grid .stat-card{width:100%;align-items:flex-start;text-align:left;color:var(--ink);font-weight:400;min-height:120px;padding:16px;cursor:pointer}
 .home-grid .stat-card .stat{display:block;font-size:28px;margin:7px 0}
 .home-grid .stat-card .meta{font-size:12px}
@@ -269,7 +269,7 @@ body:not(.classic) .overview-list .overview-row,.overview-list .overview-row{wid
  .templates-grid .card .meta{grid-area:description;margin:0}
  .templates-grid .card>small{grid-area:source;margin-top:7px}
  .templates-grid .actions{grid-area:actions;grid-template-columns:repeat(2,minmax(0,1fr));margin-top:8px}
- .templates-grid .actions button{grid-column:auto!important}
+ .templates-grid .actions :is(button,fluent-button){grid-column:auto!important}
 }
 
 /* One glass overview, rather than six separate tiles. */
@@ -368,7 +368,7 @@ body.motion button:not(:disabled):active{transform:scale(.985);filter:none}
 .empty-state{padding:24px;max-width:620px;margin:22px auto;text-align:left}
 .empty-state p{max-width:48ch;margin:8px 0 18px}
 .toolbar{align-items:end;gap:8px}.toolbar input{min-width:180px}
-.actions{align-items:center}.actions button{flex:0 1 auto}
+.actions{align-items:center}.actions :is(button,fluent-button){flex:0 1 auto}
 #list-items .list-primary h2{font-size:17px;margin-bottom:4px}
 #list-items .card{padding:16px 18px}#list-items .actions{padding-top:10px;border-top:1px solid var(--line)}
 .exam-section{font-size:18px;line-height:1.5;margin-bottom:10px}.exam-question{font-size:16px;line-height:1.7}
@@ -377,7 +377,7 @@ summary{min-height:44px;display:flex;align-items:center;cursor:pointer;gap:8px}
 summary:focus-visible{outline:2px solid var(--accent);outline-offset:3px;border-radius:6px}
 body.motion .overlay:not([hidden]) .modal{animation:dialog-arrive 180ms var(--ease-out) both}
 @keyframes dialog-arrive{from{opacity:0;transform:translateY(8px) scale(.98)}to{opacity:1;transform:none}}
-@media(max-width:420px){.toolbar input{flex-basis:100%}.toolbar>button{flex:1}.actions>button{max-width:100%}.modal{padding:18px;max-height:88dvh}.overlay{padding:12px}.empty-state{padding:20px}}
+@media(max-width:420px){.toolbar input{flex-basis:100%}.toolbar>:is(button,fluent-button){flex:1}.actions>:is(button,fluent-button){max-width:100%}.modal{padding:18px;max-height:88dvh}.overlay{padding:12px}.empty-state{padding:20px}}
 @media(prefers-reduced-motion:reduce){body.motion .overlay:not([hidden]) .modal{animation:none}}
 
 /* Touch feedback comes from the component, never the WebView's blue overlay. */
@@ -396,3 +396,50 @@ body.motion .resume-stack[open] .resume-options{animation:none}
 .resume-option-name small{display:block;font-size:12px;font-weight:400;margin-top:2px}
 .resume-option-arrow{color:var(--muted);font-size:17px}
 @media(prefers-reduced-motion:reduce){.resume-overlap span{transition:none}}
+
+/* Fluent UI buttons inherit the app's MiSans, glass palette and larger radius. */
+fluent-button{--colorNeutralBackground1:var(--card);--colorNeutralBackground1Hover:var(--tint);--colorNeutralBackground1Pressed:var(--tint);--colorNeutralForeground1:var(--ink);--colorNeutralForeground1Hover:var(--ink);--colorNeutralForeground1Pressed:var(--ink);--colorNeutralForegroundDisabled:var(--muted);--colorNeutralStroke1:var(--line);--colorNeutralStroke1Hover:var(--accent);--colorNeutralStroke1Pressed:var(--accent);--colorNeutralStrokeDisabled:var(--line);--colorTransparentBackground:transparent;--colorTransparentBackgroundHover:var(--tint);--colorTransparentBackgroundPressed:var(--tint);--colorBrandBackground:var(--accent);--colorBrandBackgroundHover:var(--accent-hover,var(--accent));--colorBrandBackgroundPressed:var(--accent-pressed,var(--accent));--colorNeutralForegroundOnBrand:#fff;--colorStrokeFocus2:var(--accent);--borderRadiusMedium:var(--control-radius);--borderRadiusLarge:var(--control-radius);--borderRadiusSmall:var(--control-radius);--fontFamilyBase:MiSans,sans-serif;--fontSizeBase200:12px;--fontSizeBase300:14px;--fontSizeBase400:16px;--fontWeightRegular:400;--fontWeightSemibold:600;--lineHeightBase200:16px;--lineHeightBase300:20px;--lineHeightBase400:22px;--spacingHorizontalXS:4px;--spacingHorizontalSNudge:6px;--spacingHorizontalS:8px;--spacingHorizontalM:12px;--spacingHorizontalL:16px;--strokeWidthThin:1px;--strokeWidthThick:2px;--durationFaster:150ms;--curveEasyEase:cubic-bezier(.33,0,.67,1);--shadow2:0 1px 2px #10251b16;--shadow4:0 2px 6px #10251b20;display:inline-flex;align-items:center;min-height:48px;vertical-align:middle;transition:transform 140ms var(--ease-out),filter 160ms ease}
+fluent-button[appearance="primary"]{--colorBrandBackground:var(--accent-fill,#263f38);--colorBrandBackgroundHover:var(--accent-hover,#31544a);--colorBrandBackgroundPressed:var(--accent-pressed,#1e352e)}
+fluent-button[disabled]{opacity:.5;pointer-events:none}
+.actions fluent-button{flex:0 1 auto}
+body.motion fluent-button:not([disabled]):active{transform:translateY(1px) scale(.99)}
+@media(hover:hover) and (pointer:fine){fluent-button:not([disabled]):hover{filter:brightness(1.025)}}
+@media(prefers-reduced-motion:reduce){fluent-button{transition:none}body.motion fluent-button:not([disabled]):active{transform:none}}
+
+/* Shared geometry: control, content surface and floating layer form one radius scale. */
+:root{--control-radius:14px;--surface-radius:20px;--overlay-radius:24px;--control-height:48px;--space-control:12px;--ease-out:cubic-bezier(.23,1,.32,1);--ease-in-out:cubic-bezier(.77,0,.175,1)}
+body:not(.classic) .card,body:not(.classic) .hero,.card,.hero{border-radius:var(--surface-radius)}
+button,input,select,textarea{border-radius:var(--control-radius)}
+button{min-height:var(--control-height);padding-inline:16px;transition:transform 140ms var(--ease-out),background-color 160ms ease,border-color 160ms ease,box-shadow 160ms ease}
+button:active:not(:disabled){transform:scale(.985)}
+input,select,textarea{min-height:var(--control-height);padding-inline:14px}
+textarea{padding-block:12px}
+.toolbar{gap:var(--space-control)}
+.toolbar>*{align-self:end}
+.toolbar label{margin-bottom:6px}
+.actions{gap:10px}
+#list-items .card{padding:16px 18px}
+.modal{border-radius:var(--overlay-radius)}
+#notice{border-radius:18px}
+.resume-stack summary{min-height:48px;border-radius:16px;padding:0 10px}
+.resume-options .resume-option{border-radius:16px;min-height:68px;padding:12px 14px}
+.resume-option-avatar{width:38px;height:38px;flex-basis:38px}
+.preview-frame{border-radius:16px}
+.study-card,.exam-review-card{border-radius:20px}
+summary:focus-visible{border-radius:14px}
+@supports (corner-shape:superellipse(1.12)){
+  body:not(.classic) .card,body:not(.classic) .hero,.card,.hero{corner-shape:superellipse(1.12)}
+  button,input,select,textarea,.modal,.resume-options .resume-option,.study-card,.exam-review-card{corner-shape:superellipse(1.12)}
+}
+@media(hover:hover) and (pointer:fine){button:not(:disabled):hover{filter:brightness(1.025)}}
+@media(prefers-reduced-motion:reduce){button{transition:none}button:active:not(:disabled){transform:none}}
+
+/* Keep every actual action visibly rounded, including compact list actions and Fluent hosts. */
+:root{--control-radius:16px}
+button,input,select,textarea,fluent-button{border-radius:var(--control-radius)}
+fluent-button{--borderRadiusMedium:var(--control-radius);--borderRadiusLarge:var(--control-radius);--borderRadiusSmall:var(--control-radius)}
+nav button{border-radius:21px}
+.overview-list .overview-row,.overview-row{border:1px solid var(--overview-rule);border-radius:14px;padding:12px 14px;margin:6px 0;background:color-mix(in srgb,var(--card) 62%,transparent)}
+.home-grid{gap:8px;border:0;border-radius:0;overflow:visible;background:transparent}
+body:not(.classic) .home-grid .stat-card,.home-grid .stat-card{border:1px solid var(--overview-rule);border-radius:14px;}
+@media(prefers-reduced-motion:reduce){fluent-button{transition:none}}

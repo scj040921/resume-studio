@@ -10,7 +10,15 @@ if($env:RESUMESTUDIO_EXAM_DOCUMENT){Copy-Item -LiteralPath $env:RESUMESTUDIO_EXA
 & "$jdk\bin\javac.exe" -encoding UTF-8 --release 17 -classpath $platform -d "$build\classes" "$root\tests\android\AcceptanceInstrumentation.java";if($LASTEXITCODE){throw 'Instrumentation compile failed'}
 & "$jdk\bin\jar.exe" --create --file "$build\classes.jar" -C "$build\classes" .
 & "$jdk\bin\java.exe" -cp "$tools\lib\d8.jar" com.android.tools.r8.D8 --min-api 26 --lib $platform --output "$build\dex" "$build\classes.jar";if($LASTEXITCODE){throw 'Instrumentation dex failed'}
-& "$tools\aapt2.exe" link -o "$build\unsigned.apk" -I $platform --manifest "$root\tests\android\AndroidManifest.xml" -A "$build\assets";if($LASTEXITCODE){throw 'Instrumentation package failed'}
+$linkAssetsScratch=Join-Path ([IO.Path]::GetTempPath()) ('rs-ui-test-'+[guid]::NewGuid().ToString('N'));New-Item -ItemType Directory -Path $linkAssetsScratch|Out-Null
+try{
+    Copy-Item -Path "$build\assets" -Destination $linkAssetsScratch -Recurse -Force
+    & "$tools\aapt2.exe" link -o "$build\unsigned.apk" -I $platform --manifest "$root\tests\android\AndroidManifest.xml" -A (Join-Path $linkAssetsScratch 'assets')
+    if($LASTEXITCODE){throw 'Instrumentation package failed'}
+}finally{
+    $tempRoot=[IO.Path]::GetFullPath([IO.Path]::GetTempPath()).TrimEnd([IO.Path]::DirectorySeparatorChar)+[IO.Path]::DirectorySeparatorChar;$fullScratch=[IO.Path]::GetFullPath($linkAssetsScratch)
+    if($fullScratch.StartsWith($tempRoot,[StringComparison]::OrdinalIgnoreCase) -and [IO.Path]::GetFileName($fullScratch) -match '^rs-ui-test-[0-9a-f]{32}$'){Remove-Item -LiteralPath $fullScratch -Recurse -Force -ErrorAction SilentlyContinue}
+}
 Add-Type -AssemblyName System.IO.Compression.FileSystem;$apk=[IO.Compression.ZipFile]::Open("$build\unsigned.apk",[IO.Compression.ZipArchiveMode]::Update);try{foreach($dex in Get-ChildItem "$build\dex" -Filter '*.dex'){[IO.Compression.ZipFileExtensions]::CreateEntryFromFile($apk,$dex.FullName,$dex.Name)|Out-Null}}finally{$apk.Dispose()}
 & "$tools\zipalign.exe" -f 4 "$build\unsigned.apk" "$build\aligned.apk"
 & "$jdk\bin\java.exe" -jar "$tools\lib\apksigner.jar" sign --ks "$env:USERPROFILE\.android\resume-studio-local.p12" --ks-key-alias resume-studio --ks-pass pass:android --out "$build\tests.apk" "$build\aligned.apk";if($LASTEXITCODE){throw 'Instrumentation signing failed'}

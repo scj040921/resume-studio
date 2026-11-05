@@ -50,3 +50,7 @@ Android document import uses [PdfBox-Android](https://github.com/TomRoush/PdfBox
 ## Android PDF 简历 OCR
 
 Google ML Kit Text Recognition v2 Chinese 16.0.1 及固定版本支持组件用于本机扫描件识别。SDK 条款、数据说明与依赖归属见 `ThirdParty/AndroidOCR/NOTICE.md`；精确版本和 SHA-256 见 `scripts/android-ocr-dependencies.json`。
+
+## Android WebView 交互组件与动效
+
+Android WebView 将选择性打包 Microsoft Fluent UI Web Components 3.1.4（MIT；按钮组件）与 GSAP 3.15.1（GSAP Standard License；免费用于商业项目，许可见 https://gsap.com/standard-license/）。精简 Bundle 由 Node.js/npm 与 esbuild 生成，仅内置使用的 Fluent 按钮组件和 GSAP 核心；APK 运行时不访问 CDN。依赖精确版本见 `client-android/package-lock.json`。

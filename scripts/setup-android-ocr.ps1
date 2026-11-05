@@ -23,8 +23,21 @@ foreach($dependency in $lock){
     if(Test-Path (Join-Path $directory 'assets')){Copy-Item -Path (Join-Path $directory 'assets/*') -Destination $AssetsDirectory -Recurse -Force}
     if(Test-Path (Join-Path $directory 'jni')){Get-ChildItem (Join-Path $directory 'jni') -Recurse -File|ForEach-Object {$native.Add(@{path=$_.FullName;name='lib/'+[IO.Path]::GetRelativePath((Join-Path $directory 'jni'),$_.FullName).Replace('\','/')})}}
     if(Test-Path (Join-Path $directory 'res')){
-        $archive=Join-Path $directory 'resources.zip'; & $Aapt2 compile --dir (Join-Path $directory 'res') -o $archive
-        if($LASTEXITCODE){throw "Android OCR resource compilation failed: $($dependency.name)"};$resources.Add($archive)
+        # aapt2 on Windows cannot open resource folders beneath a non-ASCII workspace path.
+        # Stage this small generated dependency tree beneath the ASCII system temp path.
+        $scratch=Join-Path ([IO.Path]::GetTempPath()) ('rs-ocr-'+[guid]::NewGuid().ToString('N'))
+        New-Item -ItemType Directory -Path $scratch|Out-Null
+        try{
+            Copy-Item -Path (Join-Path $directory 'res') -Destination $scratch -Recurse -Force
+            $stagedResources=Join-Path $scratch 'res';$stagedArchive=Join-Path $scratch 'resources.zip';$archive=Join-Path $directory 'resources.zip'
+            & $Aapt2 compile --dir $stagedResources -o $stagedArchive
+            if($LASTEXITCODE){throw "Android OCR resource compilation failed: $($dependency.name)"}
+            Move-Item -LiteralPath $stagedArchive -Destination $archive -Force;$resources.Add($archive)
+        }finally{
+            $tempRoot=[IO.Path]::GetFullPath([IO.Path]::GetTempPath()).TrimEnd([IO.Path]::DirectorySeparatorChar)+[IO.Path]::DirectorySeparatorChar
+            $fullScratch=[IO.Path]::GetFullPath($scratch)
+            if($fullScratch.StartsWith($tempRoot,[StringComparison]::OrdinalIgnoreCase) -and [IO.Path]::GetFileName($fullScratch) -match '^rs-ocr-[0-9a-f]{32}$'){Remove-Item -LiteralPath $fullScratch -Recurse -Force -ErrorAction SilentlyContinue}
+        }
     }
     $libraryManifest=Join-Path $directory 'AndroidManifest.xml'
     if(Test-Path $libraryManifest){

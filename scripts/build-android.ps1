@@ -59,6 +59,17 @@ $validator=$validator.Replace('Set.of(', 'MobileCompat.set(').Replace('List.of('
 [IO.File]::WriteAllText("$build\generated\com\resumestudio\Server.java",$validator,[Text.UTF8Encoding]::new($false))
 # Carry the exact desktop rendering styles, template catalog and examples into the APK.
 Copy-Item -Path "$source\assets\*" -Destination "$build\assets" -Recurse -Force
+# Bundle only the Fluent UI Web Components button and GSAP used by the WebView.
+# Node is a build-time dependency; no network assets are requested by the installed app.
+if(!(Get-Command npm -ErrorAction SilentlyContinue)){throw 'Node.js and npm are required to bundle the offline Android UI assets'}
+Push-Location $source
+try{
+    & npm ci --registry=https://registry.npmjs.org --no-audit --no-fund
+    if($LASTEXITCODE){throw 'Android UI npm dependencies could not be restored'}
+    & npm run build:vendor
+    if($LASTEXITCODE){throw 'Android Fluent UI and GSAP bundle failed'}
+}finally{Pop-Location}
+if(!(Test-Path -LiteralPath "$build\assets\vendor.js")){throw 'Android offline UI bundle was not generated'}
 # Always use the tracked desktop verification key; *.pem intentionally excludes local secrets.
 $updateKey=Join-Path $root 'client-winui\Assets\UpdatePublicKey.pem'
 $keyText=[IO.File]::ReadAllText($updateKey)
@@ -84,10 +95,31 @@ Copy-Item -LiteralPath "$root\client-winui\Assets\Fonts\MiSans-License.pdf" -Des
 foreach($notice in @('LICENSE','THIRD_PARTY_NOTICES.md','RUNTIME_NOTICES.md')){Copy-Item -LiteralPath "$root\$notice" -Destination "$build\assets" -Force}
 Copy-Item -LiteralPath "$root\ThirdParty" -Destination "$build\assets" -Recurse -Force
 $ocr=& (Join-Path $PSScriptRoot 'setup-android-ocr.ps1') -BuildDirectory $build -AssetsDirectory "$build/assets" -ManifestPath $manifestPath -Aapt2 "$tools/aapt2.exe"
-& "$tools/aapt2.exe" compile --dir "$source/res" -o "$build/resources.zip";if($LASTEXITCODE){throw 'Resource compilation failed'}
-$linkArguments=@('link','-o',"$build/unsigned.apk",'-I',$platform,'--manifest',$manifestPath,'-A',"$build/assets",'--java',"$build/r-java",'--auto-add-overlay')
-foreach($resource in @($ocr.resources)+@("$build/resources.zip")){$linkArguments+=@('-R',$resource)}
-& "$tools/aapt2.exe" @linkArguments;if($LASTEXITCODE){throw 'APK resource link failed'}
+$resourceScratch=Join-Path ([IO.Path]::GetTempPath()) ('rs-app-res-'+[guid]::NewGuid().ToString('N'))
+New-Item -ItemType Directory -Path $resourceScratch|Out-Null
+try{
+    Copy-Item -Path "$source/res" -Destination $resourceScratch -Recurse -Force
+    & "$tools/aapt2.exe" compile --dir (Join-Path $resourceScratch 'res') -o "$build/resources.zip"
+    if($LASTEXITCODE){throw 'Resource compilation failed'}
+}finally{
+    $tempRoot=[IO.Path]::GetFullPath([IO.Path]::GetTempPath()).TrimEnd([IO.Path]::DirectorySeparatorChar)+[IO.Path]::DirectorySeparatorChar
+    $fullScratch=[IO.Path]::GetFullPath($resourceScratch)
+    if($fullScratch.StartsWith($tempRoot,[StringComparison]::OrdinalIgnoreCase) -and [IO.Path]::GetFileName($fullScratch) -match '^rs-app-res-[0-9a-f]{32}$'){Remove-Item -LiteralPath $fullScratch -Recurse -Force -ErrorAction SilentlyContinue}
+}
+$linkScratch=Join-Path ([IO.Path]::GetTempPath()) ('rs-apk-link-'+[guid]::NewGuid().ToString('N'))
+New-Item -ItemType Directory -Path $linkScratch|Out-Null
+try{
+    # aapt2's asset-directory reader has the same Windows Unicode-path limitation.
+    Copy-Item -Path "$build/assets" -Destination $linkScratch -Recurse -Force
+    $linkArguments=@('link','-o',"$build/unsigned.apk",'-I',$platform,'--manifest',$manifestPath,'-A',(Join-Path $linkScratch 'assets'),'--java',"$build/r-java",'--auto-add-overlay')
+    foreach($resource in @($ocr.resources)+@("$build/resources.zip")){$linkArguments+=@('-R',$resource)}
+    & "$tools/aapt2.exe" @linkArguments
+    if($LASTEXITCODE){throw 'APK resource link failed'}
+}finally{
+    $tempRoot=[IO.Path]::GetFullPath([IO.Path]::GetTempPath()).TrimEnd([IO.Path]::DirectorySeparatorChar)+[IO.Path]::DirectorySeparatorChar
+    $fullScratch=[IO.Path]::GetFullPath($linkScratch)
+    if($fullScratch.StartsWith($tempRoot,[StringComparison]::OrdinalIgnoreCase) -and [IO.Path]::GetFileName($fullScratch) -match '^rs-apk-link-[0-9a-f]{32}$'){Remove-Item -LiteralPath $fullScratch -Recurse -Force -ErrorAction SilentlyContinue}
+}
 $rFile=Join-Path $build 'r-java/com/resumestudio/mobile/R.java';$rSource=[IO.File]::ReadAllText($rFile)
 foreach($package in $ocr.packages){if($package -eq 'com.resumestudio.mobile'){continue};$target=Join-Path $build ('r-java/'+$package.Replace('.','/')+'/R.java');New-Item -ItemType Directory -Path (Split-Path $target -Parent) -Force|Out-Null;[IO.File]::WriteAllText($target,$rSource.Replace('package com.resumestudio.mobile;','package '+$package+';'),[Text.UTF8Encoding]::new($false))}
 $javaSources=@(Get-ChildItem "$source\src","$build\generated","$build\r-java" -Recurse -Filter '*.java'|ForEach-Object FullName)

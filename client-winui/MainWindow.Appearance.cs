@@ -68,14 +68,15 @@ public sealed partial class MainWindow
         {
             foreach(var type in new[] {typeof(TextBox),typeof(ComboBox)})
             {
-                var style=new Style(type); style.Setters.Add(new Setter(Control.CornerRadiusProperty,new CornerRadius(8))); style.Setters.Add(new Setter(Control.FontFamilyProperty,ResumeTypography.InterfaceFont)); contentHost.Resources.Add(type,style);
+                var style=new Style(type); style.Setters.Add(new Setter(Control.CornerRadiusProperty,new CornerRadius(13))); style.Setters.Add(new Setter(Control.MinHeightProperty,42d)); style.Setters.Add(new Setter(Control.FontFamilyProperty,ResumeTypography.InterfaceFont)); contentHost.Resources.Add(type,style);
             }
+            var buttonStyle=new Style(typeof(Button)); buttonStyle.Setters.Add(new Setter(Control.CornerRadiusProperty,new CornerRadius(14))); buttonStyle.Setters.Add(new Setter(Control.MinHeightProperty,42d)); buttonStyle.Setters.Add(new Setter(Control.FontFamilyProperty,ResumeTypography.InterfaceFont)); contentHost.Resources.Add(typeof(Button),buttonStyle);
         }
         ConfigureWindowMaterial();
         contentHost!.Margin=haruStyle?new Thickness(22,18,22,18):new Thickness(30,26,30,22);
         pageTitle.Foreground=Brush(Ink); pageSubtitle.Foreground=Brush(darkStyle?"#BAC1BC":"#626C66"); saveState.Foreground=Brush(darkStyle?"#9FB2E5":"#167D78");
         headerFrame!.Padding=haruStyle?new Thickness(0,8,0,12):new Thickness(0);
-        headerFrame.CornerRadius=new CornerRadius(haruStyle?16:0);
+        headerFrame.CornerRadius=new CornerRadius(haruStyle?20:0);
         headerFrame.BorderThickness=new Thickness(0); headerFrame.BorderBrush=EdgeMaterial;
         headerFrame.Background=new SolidColorBrush(Colors.Transparent);
         previewTimer.Interval=TimeSpan.FromMilliseconds(preferences.PreviewDelayMs);

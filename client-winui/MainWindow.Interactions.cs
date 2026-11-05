@@ -63,7 +63,7 @@ public sealed partial class MainWindow
     }
     private static Border InteractiveCard(UIElement child,Thickness padding)
     {
-        var card=new Border {Child=child,Padding=padding,Background=PanelMaterial,BorderBrush=EdgeMaterial,BorderThickness=new Thickness(1),CornerRadius=new CornerRadius(10)};
+        var card=new Border {Child=child,Padding=padding,Background=PanelMaterial,BorderBrush=EdgeMaterial,BorderThickness=new Thickness(1),CornerRadius=new CornerRadius(20)};
         // A reading panel is not an action: keep geometry and borders stable on hover.
         return card;
     }
@@ -125,9 +125,9 @@ public sealed partial class MainWindow
     private Expander Disclosure(string title,UIElement content,bool expanded=false,string? key=null)
     {
         var stack=new Grid {Margin=new Thickness(0,0,0,8)};
-        stack.Children.Add(new Border {Margin=new Thickness(12,6,12,-6),Background=PanelMaterial,BorderBrush=EdgeMaterial,BorderThickness=new Thickness(1),CornerRadius=new CornerRadius(10),Opacity=.45,IsHitTestVisible=false});
-        stack.Children.Add(new Border {Margin=new Thickness(6,3,6,-3),Background=PanelMaterial,BorderBrush=EdgeMaterial,BorderThickness=new Thickness(1),CornerRadius=new CornerRadius(10),Opacity=.7,IsHitTestVisible=false});
-        stack.Children.Add(new Border {Child=content,Padding=new Thickness(10),Background=PanelMaterial,BorderBrush=EdgeMaterial,BorderThickness=new Thickness(1),CornerRadius=new CornerRadius(10)});
+        stack.Children.Add(new Border {Margin=new Thickness(12,6,12,-6),Background=PanelMaterial,BorderBrush=EdgeMaterial,BorderThickness=new Thickness(1),CornerRadius=new CornerRadius(16),Opacity=.45,IsHitTestVisible=false});
+        stack.Children.Add(new Border {Margin=new Thickness(6,3,6,-3),Background=PanelMaterial,BorderBrush=EdgeMaterial,BorderThickness=new Thickness(1),CornerRadius=new CornerRadius(18),Opacity=.7,IsHitTestVisible=false});
+        stack.Children.Add(new Border {Child=content,Padding=new Thickness(10),Background=PanelMaterial,BorderBrush=EdgeMaterial,BorderThickness=new Thickness(1),CornerRadius=new CornerRadius(20)});
         var expander=new Expander {Header=title,Content=stack,IsExpanded=expanded,HorizontalAlignment=HorizontalAlignment.Stretch,HorizontalContentAlignment=HorizontalAlignment.Stretch};
         expander.Expanding+=(_,_)=>{if(Animate){var visual=ElementCompositionPreview.GetElementVisual(stack);visual.Scale=new Vector3(.985f,.985f,1);ScaleTo(stack,1);}};
         if(key is not null)expander.Tag=key;

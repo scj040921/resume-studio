@@ -1,0 +1,19 @@
+{
+  "name": "resume-studio-android-ui",
+  "private": true,
+  "version": "1.0.0",
+  "description": "Offline UI component and motion bundles for the Resume Studio Android WebView",
+  "scripts": {
+    "build:vendor": "esbuild ui-vendor.js --bundle --minify --target=chrome80 --outfile=../artifacts/android-build/assets/vendor.js"
+  },
+  "dependencies": {
+    "@fluentui/web-components": "3.1.4",
+    "gsap": "3.15.1"
+  },
+  "devDependencies": {
+    "esbuild": "0.28.2"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}

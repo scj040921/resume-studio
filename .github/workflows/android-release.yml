@@ -67,6 +67,13 @@ jobs:
           gh release download '${{ steps.identity.outputs.existing_tag }}' --repo "$env:GITHUB_REPOSITORY" -p android-release-info.json -p android-release-info.sig -D release
           if($LASTEXITCODE){throw 'Cannot restore Android metadata'}
           ./scripts/publish-android-channel.ps1 -Channel nightly
+      - name: Setup Node.js for the offline UI bundle
+        if: steps.identity.outputs.changed == 'true'
+        uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5.0.0
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: client-android/package-lock.json
       - name: Install verified JDK
         if: steps.identity.outputs.changed == 'true'
         shell: pwsh
