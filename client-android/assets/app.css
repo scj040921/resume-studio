@@ -151,8 +151,8 @@ label.check{border-radius:10px;padding:5px 8px;margin-left:-8px}
 body.motion label.check{transition:background-color .2s,color .2s}
 label.check:has(input:checked){background:var(--tint);color:var(--accent)}
 .card:has(input[data-suggestion]:checked){border-color:var(--accent)}
-button.completed::after{content:" ✓";font-weight:800}
-body.motion button.completed{animation:rs-completed .4s cubic-bezier(.2,.8,.2,1)}
+:is(button,fluent-button).completed::after{content:" ✓";font-weight:800}
+body.motion :is(button,fluent-button).completed{animation:rs-completed .4s cubic-bezier(.2,.8,.2,1)}
 @keyframes rs-completed{35%{transform:scale(1.045)}70%{transform:scale(.985)}100%{transform:scale(1)}}
 #nav button::after{content:"";position:absolute;left:35%;right:35%;bottom:5px;height:2px;border-radius:3px;background:currentColor;transform:scaleX(0);transform-origin:center;opacity:0}
 #nav button.active::after{transform:scaleX(1);opacity:.85}
@@ -164,7 +164,7 @@ body.motion #nav button::after{transition:transform .28s cubic-bezier(.2,.75,.25
 body.motion .study-card::before,body.motion .study-card::after{transition:transform .3s cubic-bezier(.2,.75,.25,1),opacity .3s}
 .study-card.expanded::before{transform:translateY(3px) scaleX(.99);opacity:.3}
 .study-card.expanded::after{transform:translateY(1px) scaleX(1);opacity:.3}
-@media(prefers-reduced-motion:reduce){body.motion button.completed{animation:none}body.motion #nav button::after,body.motion .study-card::before,body.motion .study-card::after{transition:none}}
+@media(prefers-reduced-motion:reduce){body.motion :is(button,fluent-button).completed{animation:none}body.motion #nav button::after,body.motion .study-card::before,body.motion .study-card::after{transition:none}}
 
 .study-card .study-question-body{position:relative;z-index:1}
 

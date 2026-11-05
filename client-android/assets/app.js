@@ -17,7 +17,7 @@ async function dialog(html,choices=[['确定','ok']]){
  const overlay=$('#overlay');if(!overlay.hidden)throw new Error('请先完成当前对话框');
  const previous=document.activeElement,modal=overlay.querySelector('.modal');
  $('#modal-body').innerHTML=html;$('#modal-buttons').innerHTML='';
- const heading=$('#modal-body').querySelector('h1,h2,h3');if(heading){heading.id='dialog-heading';modal.setAttribute('aria-labelledby',heading.id);}else{modal.removeAttribute('aria-labelledby');modal.setAttribute('aria-label','确认操作');}
+ const heading=$('#modal-body').querySelector('h1,h2,h3');if(heading){heading.id='dialog-heading';modal.removeAttribute('aria-label');modal.setAttribute('aria-labelledby',heading.id);}else{modal.removeAttribute('aria-labelledby');modal.setAttribute('aria-label','确认操作');}
  const background=[...document.querySelectorAll('main,nav,.appbar')].map(el=>[el,el.inert]);background.forEach(([el])=>el.inert=true);
  overlay.hidden=false;
  return new Promise(resolve=>{
