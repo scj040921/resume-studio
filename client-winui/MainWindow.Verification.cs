@@ -112,7 +112,7 @@ public sealed partial class MainWindow
         bool Contains(double x,double y)=>regions.Any(r=>x>=r.X&&x<r.X+r.Width&&y>=r.Y&&y<r.Y+r.Height);
         double right=shell.ActualWidth*scale-AppWindow.TitleBar.RightInset;
         if(!Contains((48*scale+right)/2,12*scale)||!Contains(header.X*scale,header.Y*scale)) throw new Exception("Native caption region missing from visible top edge or page header");
-        if(Contains(24*scale,12*scale)||Contains(shell.ActualWidth*scale-16,12*scale)) throw new Exception("Drag region intercepts navigation menu or caption controls");
+        if(Contains(24*scale,12*scale)||Contains(shell.ActualWidth*scale-16,12*scale)) throw new Exception($"Drag region intercepts navigation menu or caption controls (scale={scale}, width={shell.ActualWidth}, rightInset={AppWindow.TitleBar.RightInset}, regions={string.Join(";",regions.Select(r=>$"{r.X},{r.Y},{r.Width},{r.Height}"))})");
         if(Contains(shell.ActualWidth*scale/2,shell.ActualHeight*scale/2)) throw new Exception("Drag region intercepts page controls");
     }
     private async Task VerifyVisibleJobCapture(string output)

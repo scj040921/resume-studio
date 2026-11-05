@@ -20,6 +20,7 @@ public sealed partial class MainWindow
 
     private void ConfigureWindowMaterial()
     {
+        ConfigureGlassScrollbars();
         var handle=WinRT.Interop.WindowNative.GetWindowHandle(this);
         bool acrylic=haruStyle&&Microsoft.UI.Composition.SystemBackdrops.DesktopAcrylicController.IsSupported();
         SystemBackdrop=acrylic?new DesktopAcrylicBackdrop():new MicaBackdrop();
@@ -34,6 +35,18 @@ public sealed partial class MainWindow
         panelMaterial=Brush(darkStyle?"#F2252827":"#F5FFFFFF");
         edgeMaterial=Brush(darkStyle?"#444946":"#DDE1DD");
         navigationMaterial=Brush(darkStyle?"#C8202422":"#C9EFF2EE");
+    }
+
+    private static void ConfigureGlassScrollbars()
+    {
+        // The default WinUI scrollbar track uses an opaque acrylic fallback, which
+        // creates a visible strip over the window material. Keep the thumb visible.
+        var resources=Application.Current.Resources;
+        string[] trackKeys=["ScrollBarTrackFill","ScrollBarTrackFillPointerOver","ScrollBarTrackFillDisabled","ScrollBarTrackStroke","ScrollBarTrackStrokePointerOver","ScrollBarTrackStrokeDisabled","ScrollViewerScrollBarSeparatorBackground"];
+        string[] thumbKeys=["ScrollBarThumbFill","ScrollBarThumbFillPointerOver","ScrollBarThumbFillPressed","ScrollBarThumbBackground","ScrollBarPanningThumbBackground"];
+        bool custom=haruStyle&&!new Windows.UI.ViewManagement.AccessibilitySettings().HighContrast;
+        foreach(var key in trackKeys) { if(custom)resources[key]=new SolidColorBrush(Colors.Transparent);else resources.Remove(key); }
+        foreach(var key in thumbKeys) { if(custom)resources[key]=Brush(darkStyle?"#B5D5E3DA":"#99516C60");else resources.Remove(key); }
     }
 
     private void ConfigureGlassNavigation(NavigationView nav)

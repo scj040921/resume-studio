@@ -41,6 +41,12 @@ public sealed partial class MainWindow
             if(rects.Any(rect=>rect.Width<1||rect.Right>body.ActualWidth+1)||(!compactRow&&!compactWrap))throw new Exception("Compact home shortcuts overflow");
             checks.Add("compact glass home keeps shortcuts visible and title bar draggable");
         }finally{AppWindow.Resize(originalSize);await Task.Delay(200);}
+        var scrollProbe=new ScrollViewer {Width=160,Height=100,VerticalScrollBarVisibility=ScrollBarVisibility.Visible,Content=new Border {Height=400}};
+        body.Children.Add(scrollProbe);body.UpdateLayout();await Task.Delay(200);
+        var scrollTrack=InteractionElement<Microsoft.UI.Xaml.Shapes.Rectangle>(scrollProbe,r=>r.Name=="VerticalTrackRect");
+        if(!new Windows.UI.ViewManagement.AccessibilitySettings().HighContrast && (scrollTrack?.Fill is not Microsoft.UI.Xaml.Media.SolidColorBrush trackBrush || trackBrush.Color.A!=0))throw new Exception($"Glass scrollbar track: {(scrollTrack is null?"missing":scrollTrack.Fill?.ToString()??"no fill")}");
+        body.Children.Remove(scrollProbe);
+        checks.Add("glass scrollbar track uses the window surface");
     }
     private static T? InteractionElement<T>(DependencyObject parent,Func<T,bool> predicate) where T:DependencyObject
     {
