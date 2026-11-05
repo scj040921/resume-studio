@@ -381,7 +381,7 @@ body.motion .overlay:not([hidden]) .modal{animation:dialog-arrive 180ms var(--ea
 @media(prefers-reduced-motion:reduce){body.motion .overlay:not([hidden]) .modal{animation:none}}
 
 /* Touch feedback comes from the component, never the WebView's blue overlay. */
-button,a,summary,[role="button"],label.check,input,select,textarea{-webkit-tap-highlight-color:transparent}
+button,fluent-button,a,summary,[role="button"],label.check,input,select,textarea{-webkit-tap-highlight-color:transparent}
 button:focus:not(:focus-visible),summary:focus:not(:focus-visible),[role="button"]:focus:not(:focus-visible),a:focus:not(:focus-visible){outline:none}
 .resume-stack summary{border-radius:8px;user-select:none}
 .resume-stack summary:active{background:color-mix(in srgb,var(--ink) 5%,transparent)}
@@ -429,7 +429,7 @@ textarea{padding-block:12px}
 summary:focus-visible{border-radius:14px}
 @supports (corner-shape:superellipse(1.12)){
   body:not(.classic) .card,body:not(.classic) .hero,.card,.hero{corner-shape:superellipse(1.12)}
-  button,input,select,textarea,.modal,.resume-options .resume-option,.study-card,.exam-review-card{corner-shape:superellipse(1.12)}
+  button,fluent-button,input,select,textarea,.modal,.resume-options .resume-option,.study-card,.exam-review-card{corner-shape:superellipse(1.12)}
 }
 @media(hover:hover) and (pointer:fine){button:not(:disabled):hover{filter:brightness(1.025)}}
 @media(prefers-reduced-motion:reduce){button{transition:none}button:active:not(:disabled){transform:none}}
