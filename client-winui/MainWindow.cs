@@ -18,7 +18,7 @@ public sealed partial class MainWindow : Window
     private readonly Grid shell = new();
     private Grid body = new();
     private readonly Border pageHost = new();
-    private readonly TextBlock pageTitle = Text("模板中心",28,true);
+    private readonly TextBlock pageTitle = Text("模板中心",24,true);
     private readonly TextBlock pageSubtitle = Text("从一份清晰的简历，开始下一段旅程。",13);
     private readonly TextBlock saveState = Text("正在连接本地服务…",12);
     private readonly InfoBar notice = new() { IsClosable=true, Margin=new Thickness(0,0,0,12) };
@@ -83,6 +83,7 @@ public sealed partial class MainWindow : Window
     }
     private static TextBlock Text(string text,double size=14,bool bold=false) => new() { Text=text,FontSize=size,FontFamily=ResumeTypography.InterfaceFont,FontWeight=bold?Microsoft.UI.Text.FontWeights.SemiBold:Microsoft.UI.Text.FontWeights.Normal,Foreground=Brush(Ink),TextWrapping=TextWrapping.Wrap };
     private static StackPanel Stack(double spacing=12) => new() { Spacing=spacing };
+    private static FlowPanel Flow(double spacing=8) => new() {Spacing=spacing};
     private static StackPanel Row(double spacing=10) => new() { Orientation=Orientation.Horizontal,Spacing=spacing };
     private static StackPanel ToolbarField(string label,FrameworkElement control)
     {
@@ -93,11 +94,11 @@ public sealed partial class MainWindow : Window
         field.Children.Add(heading);control.VerticalAlignment=VerticalAlignment.Top;field.Children.Add(control);
         return field;
     }
-    private static Border Card(UIElement child,Thickness? padding=null) => InteractiveCard(child,padding??new Thickness(22));
+    private static Border Card(UIElement child,Thickness? padding=null) => InteractiveCard(child,padding??new Thickness(20));
     private Button Button(string label,Func<Task> action,bool primary=false,bool completionFeedback=false)
     {
-        var b=new Button { Content=label,Padding=new Thickness(15,9,15,9),CornerRadius=new CornerRadius(haruStyle?12:7),FontFamily=ResumeTypography.InterfaceFont };
-        if(primary) { b.Background=Brush(Accent); b.Foreground=Brush("#FFFFFF"); }
+        var b=new Button { Content=label,Padding=new Thickness(14,8,14,8),MinHeight=40,CornerRadius=new CornerRadius(8),FontFamily=ResumeTypography.InterfaceFont };
+        if(primary) { b.Background=Brush(darkStyle?"#DCE9E2":"#263F38"); b.Foreground=Brush(darkStyle?"#1E2924":"#FFFFFF"); }
         ButtonMotion(b); ToolTipService.SetToolTip(b,label);
         b.Click+=async (_,_)=>await Run(()=>ExecuteButton(b,action,completionFeedback)); return b;
     }
@@ -151,15 +152,15 @@ public sealed partial class MainWindow : Window
     }
     private void BuildSidebar()
     {
-        var side=new Grid { Background=Brush("#14233F"),Padding=new Thickness(17,28,17,20) };
+        var side=new Grid { Background=Brush(darkStyle?"#202422":"#EDF1EC"),Padding=new Thickness(17,28,17,20) };
         classicSidebar=side;
         side.RowDefinitions.Add(new RowDefinition { Height=GridLength.Auto }); side.RowDefinitions.Add(new RowDefinition { Height=new GridLength(1,GridUnitType.Star) }); side.RowDefinitions.Add(new RowDefinition { Height=GridLength.Auto });
-        var brand=Stack(5); var name=Text("拾简",30,true); name.Foreground=Brush("#FFFFFF"); var mark=Row(10); mark.Children.Add(BrandLogo(46)); mark.Children.Add(name); brand.Children.Add(mark); var sub=Text("RESUME STUDIO",10); sub.CharacterSpacing=150; sub.Foreground=Brush("#8CA6D2"); brand.Children.Add(sub); side.Children.Add(brand); classicBrandName=name; classicBrandSubtitle=sub;
+        var brand=Stack(5); var name=Text("拾简",30,true); name.Foreground=Brush(Ink); var mark=Row(10); mark.Children.Add(BrandLogo(46)); mark.Children.Add(name); brand.Children.Add(mark); var sub=Text("RESUME STUDIO",10); sub.CharacterSpacing=150; sub.Foreground=Brush(darkStyle?"#BAC1BC":"#626C66"); brand.Children.Add(sub); side.Children.Add(brand); classicBrandName=name; classicBrandSubtitle=sub;
         var menu=Stack(7); menu.Margin=new Thickness(0,35,0,0);
         BuildClassicNavigationMenu(menu,NavigationCatalog.Roots);
         var menuScroll=new ScrollViewer { Content=menu,VerticalScrollBarVisibility=ScrollBarVisibility.Auto,HorizontalScrollBarVisibility=ScrollBarVisibility.Disabled,HorizontalScrollMode=ScrollMode.Disabled };
         Grid.SetRow(menuScroll,1); side.Children.Add(menuScroll);
-        var footer=Stack(8); var tagline=Text("把经历写清楚\n让机会更靠近",13); tagline.Foreground=Brush("#A9BEDC"); footer.Children.Add(tagline); var v=Text($"v{typeof(MainWindow).Assembly.GetName().Version?.ToString(3)}  ·  Windows 桌面版",10); v.Foreground=Brush("#7189AE"); footer.Children.Add(v); Grid.SetRow(footer,2); side.Children.Add(footer); classicFooter=footer; shell.Children.Add(side);
+        var footer=Stack(8); var tagline=Text("把经历写清楚\n让机会更靠近",13); tagline.Foreground=Brush(darkStyle?"#BAC1BC":"#626C66"); footer.Children.Add(tagline); var v=Text($"v{typeof(MainWindow).Assembly.GetName().Version?.ToString(3)}  ·  Windows 桌面版",10); v.Foreground=Brush(darkStyle?"#BAC1BC":"#626C66"); footer.Children.Add(v); Grid.SetRow(footer,2); side.Children.Add(footer); classicFooter=footer; shell.Children.Add(side);
     }
     private async Task Navigate(string page)
     {

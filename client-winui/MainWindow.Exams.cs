@@ -25,7 +25,7 @@ public sealed partial class MainWindow
         Heading("笔试题复盘","导入笔试题后逐题记录错因、知识缺口和下一步改进。内容自动保存到本机。");
         var all=await api.Get<List<InterviewDeck>>("interviews");if(!PageIsCurrent("exams",generation))return;
         var decks=all.Where(d=>d.StudyType=="exam").OrderBy(d=>d.Title).ToList();
-        var root=Stack(14);var toolbar=Row();toolbar.VerticalAlignment=VerticalAlignment.Top;
+        var root=Stack(14);var toolbar=Flow();toolbar.VerticalAlignment=VerticalAlignment.Top;
         toolbar.Children.Add(ToolbarField("",Button("＋ 导入笔试题文件",ImportExamQuestions,true)));
         var selected=decks.FirstOrDefault(d=>d.Id==examDeckId)??decks.OrderByDescending(d=>DateTimeOffset.TryParse(d.UpdatedAt,out var at)?at:DateTimeOffset.MinValue).FirstOrDefault();
         int SavedIndex(InterviewDeck? deck)=>deck is null?0:Math.Max(0,deck.Questions.FindIndex(q=>q.Id==deck.LastQuestionId));
@@ -41,7 +41,7 @@ public sealed partial class MainWindow
         var questionLabels=new List<string>();string labelDeckId="";bool updatingJump=false,moving=false,saving=false,switching=false;
         var jump=new ComboBox {ItemsSource=questionLabels,MinWidth=230,MaxWidth=370,PlaceholderText="跳转到题目",Tag="exam-question-picker"};
         Microsoft.UI.Xaml.Automation.AutomationProperties.SetName(jump,"跳转到题目");ToolTipService.SetToolTip(jump,"跳转到题目");
-        var jumpRow=Row();var jumpLabel=Text("跳转题目",13,true);jumpLabel.VerticalAlignment=VerticalAlignment.Center;jumpRow.Children.Add(jumpLabel);jumpRow.Children.Add(jump);root.Children.Add(jumpRow);
+        var jumpRow=Flow();var jumpLabel=Text("跳转题目",13,true);jumpLabel.VerticalAlignment=VerticalAlignment.Center;jumpRow.Children.Add(jumpLabel);jumpRow.Children.Add(jump);root.Children.Add(jumpRow);
         var host=new Border {MinHeight=440,MaxWidth=980,HorizontalAlignment=HorizontalAlignment.Stretch};root.Children.Add(host);
         var pageButtons=Row();pageButtons.HorizontalAlignment=HorizontalAlignment.Center;root.Children.Add(pageButtons);
         Button previous=null!,next=null!;var actionButtons=new List<Button>();
@@ -94,7 +94,7 @@ public sealed partial class MainWindow
             examDraftDeck=currentDeck;examDraftQuestion=q;examDraftNote=q.ReviewNote;examReviewInput=note;
             if(currentDeck.LastQuestionId!=q.Id){currentDeck.LastQuestionId=q.Id;examDraftDirty=true;examDraftRevision++;examSaveTimer.Stop();examSaveTimer.Start();}
             note.TextChanged+=(_,_)=>{if(!ReferenceEquals(examReviewInput,note)||!ReferenceEquals(examDraftQuestion,q)||examDraftNote==note.Text)return;q.ReviewNote=note.Text;examDraftNote=note.Text;examDraftDirty=true;examDraftRevision++;saveState.Text="正在保存…";examSaveTimer.Stop();examSaveTimer.Start();};
-            var actions=Row();actionButtons.Clear();actionButtons.Add(Button("保存本题",()=>Save(q.Status),true));actionButtons.Add(Button("标记已复盘并下一题",async ()=>{await Save("remembered");if(Alive()&&examQuestionIndex<count-1)await MoveTo(examQuestionIndex+1);},true));actionButtons.Add(Button("标记需要再练",()=>Save("learning")));actionButtons.Add(Button("清除复盘标记",()=>Save("unseen")));foreach(var action in actionButtons)actions.Children.Add(action);card.Children.Add(actions);host.Child=Card(card,new Thickness(22));UpdateControls();
+            var actions=Flow();actionButtons.Clear();actionButtons.Add(Button("保存本题",()=>Save(q.Status),true));actionButtons.Add(Button("标记已复盘并下一题",async ()=>{await Save("remembered");if(Alive()&&examQuestionIndex<count-1)await MoveTo(examQuestionIndex+1);},true));actionButtons.Add(Button("标记需要再练",()=>Save("learning")));actionButtons.Add(Button("清除复盘标记",()=>Save("unseen")));foreach(var action in actionButtons)actions.Children.Add(action);card.Children.Add(actions);host.Child=Card(card,new Thickness(22));UpdateControls();
         }
         jump.SelectionChanged+=(_,_)=>{if(!updatingJump&&Alive())_=Run(()=>MoveTo(jump.SelectedIndex));};
         picker.SelectionChanged+=(_,_)=>_=Run(async ()=>{

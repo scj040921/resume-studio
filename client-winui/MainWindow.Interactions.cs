@@ -22,21 +22,10 @@ public sealed partial class MainWindow
     private static void RevealPage(FrameworkElement element,Windows.Foundation.Point? origin)
     {
         if(!Animate||origin is null)return;
-        if(element.ActualWidth<1||element.ActualHeight<1){
-            SizeChangedEventHandler? ready=null;ready=(_,_)=>{if(element.ActualWidth<1||element.ActualHeight<1)return;element.SizeChanged-=ready;RevealPage(element,origin);};element.SizeChanged+=ready;return;
-        }
-        var visual=ElementCompositionPreview.GetElementVisual(element);if(visual.Clip is not null)return;
-        float x=(float)origin.Value.X,y=(float)origin.Value.Y;
-        double farX=Math.Max(Math.Abs(x),Math.Abs(element.ActualWidth-x)),farY=Math.Max(Math.Abs(y),Math.Abs(element.ActualHeight-y));
-        float radius=(float)Math.Sqrt(farX*farX+farY*farY)+4;
-        var ellipse=visual.Compositor.CreateEllipseGeometry();ellipse.Center=new Vector2(x,y);ellipse.Radius=Vector2.Zero;
-        var clip=visual.Compositor.CreateGeometricClip(ellipse);visual.Clip=clip;
-        var animation=visual.Compositor.CreateVector2KeyFrameAnimation();animation.Duration=TimeSpan.FromMilliseconds(320);animation.InsertKeyFrame(1,new Vector2(radius),visual.Compositor.CreateCubicBezierEasingFunction(new Vector2(.2f,.75f),new Vector2(.25f,1)));ellipse.StartAnimation("Radius",animation);
-        _=ReleaseReveal(visual,clip);
-    }
-    private static async Task ReleaseReveal(Microsoft.UI.Composition.Visual visual,Microsoft.UI.Composition.CompositionClip clip)
-    {
-        await Task.Delay(350);try{if(ReferenceEquals(visual.Clip,clip))visual.Clip=null;}catch(System.Runtime.InteropServices.COMException){}
+        var visual=ElementCompositionPreview.GetElementVisual(element);
+        visual.StopAnimation("Opacity");
+        var fade=visual.Compositor.CreateScalarKeyFrameAnimation();fade.Duration=TimeSpan.FromMilliseconds(180);
+        fade.InsertKeyFrame(0,.35f);fade.InsertKeyFrame(1,1);visual.StartAnimation("Opacity",fade);
     }
     private static void InertialWheel(UIElement child,ScrollViewer scroll)
     {
@@ -56,17 +45,17 @@ public sealed partial class MainWindow
         visual.CenterPoint=new Vector3((float)element.ActualWidth/2,(float)element.ActualHeight/2,0);
         if(!Animate) {visual.StopAnimation("Scale");visual.Scale=Vector3.One;return;}
         var animation=visual.Compositor.CreateVector3KeyFrameAnimation();
-        animation.Duration=TimeSpan.FromMilliseconds(pressed?100:280);
+        animation.Duration=TimeSpan.FromMilliseconds(pressed?90:160);
         animation.InsertKeyFrame(1,new Vector3(scale,scale,1),visual.Compositor.CreateCubicBezierEasingFunction(new Vector2(.18f,.8f),new Vector2(.3f,1)));
         visual.StartAnimation("Scale",animation);
     }
     private static void ButtonMotion(ButtonBase button)
     {
         bool over=false;
-        button.PointerEntered+=(_,_)=> {over=true;if(button.IsEnabled)ScaleTo(button,1.008f);};
+        button.PointerEntered+=(_,_)=> {over=true;if(button.IsEnabled)ScaleTo(button,1);};
         button.PointerExited+=(_,_)=> {over=false;ScaleTo(button,1);};
         button.PointerPressed+=(_,_)=> {if(button.IsEnabled)ScaleTo(button,.99f,true);};
-        button.PointerReleased+=(_,_)=>ScaleTo(button,over&&button.IsEnabled?1.008f:1);
+        button.PointerReleased+=(_,_)=>ScaleTo(button,1);
         button.PointerCanceled+=(_,_)=>ScaleTo(button,1);
         button.PointerCaptureLost+=(_,_)=>ScaleTo(button,1);
         button.LostFocus+=(_,_)=> {if(!over)ScaleTo(button,1);};
@@ -74,10 +63,8 @@ public sealed partial class MainWindow
     }
     private static Border InteractiveCard(UIElement child,Thickness padding)
     {
-        var card=new Border {Child=child,Padding=padding,Background=PanelMaterial,BorderBrush=EdgeMaterial,BorderThickness=new Thickness(1),CornerRadius=new CornerRadius(haruStyle?14:12)};
-        // WebView hosts and complex grids keep their geometry; simple content cards can lift subtly.
-        card.PointerEntered+=(_,_)=> {card.BorderBrush=Brush(Accent);if(child is StackPanel)ScaleTo(card,1.006f);};
-        card.PointerExited+=(_,_)=> {card.BorderBrush=EdgeMaterial;if(child is StackPanel)ScaleTo(card,1);};
+        var card=new Border {Child=child,Padding=padding,Background=PanelMaterial,BorderBrush=EdgeMaterial,BorderThickness=new Thickness(1),CornerRadius=new CornerRadius(10)};
+        // A reading panel is not an action: keep geometry and borders stable on hover.
         return card;
     }
     private static void Entrance(Panel panel)
@@ -150,6 +137,6 @@ public sealed partial class MainWindow
     private void SaveIndicator(string label,bool pending=false)
     {
         saveState.Text=(pending?"◌  ":"✓  ")+label;
-        saveState.Foreground=Brush(pending?"#A56A05":"#167D78");
+        saveState.Foreground=Brush(pending?(darkStyle?"#F0C77A":"#855500"):(darkStyle?"#87C9C0":"#236C65"));
     }
 }

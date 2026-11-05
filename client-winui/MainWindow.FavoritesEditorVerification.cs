@@ -48,8 +48,9 @@ public sealed partial class MainWindow
             pages=InteractionElement<ComboBox>(body,c=>c.Tag?.ToString()=="favorite-pages")!;
             var source=InteractionElement<ComboBox>(body,c=>c.Items.OfType<string>().Contains("全部平台"))!;source.SelectedItem="牛客";await Task.Delay(80);
             Check(favoritePage==1&&visibleJobList!.Items.Count==10&&visibleJobList.Items.OfType<Job>().All(j=>j.Source=="牛客"),style+": platform filtering resets pagination and preserves the selected platform");
-            var query=InteractionElement<TextBox>(body,t=>t.PlaceholderText=="职位 / 公司 / 备注")!;query.Text="不存在的分页测试项";await Task.Delay(80);
+            var query=InteractionElement<TextBox>(body,t=>Microsoft.UI.Xaml.Automation.AutomationProperties.GetName(t)=="搜索职位收藏")!;query.Text="不存在的分页测试项";await Task.Delay(80);
             Check(visibleJobList.Items.Count==0&&!FeatureButton(body,"下一页")!.IsEnabled,style+": empty search results disable paging");
+            Check(visibleJobList.Visibility==Microsoft.UI.Xaml.Visibility.Collapsed&&InteractionElement<TextBlock>(body,t=>t.Text=="没有找到匹配的职位") is not null,style+": empty results explain recovery instead of leaving a blank list");
             await Click("清空筛选");
             Check(favoriteSource=="全部平台"&&favoritePage==1&&pages.Items.Count==6&&visibleJobList.Items.Count==10,style+": clearing filters restores all old favorites and valid pagination");
             await SaveNativePreview(Path.Combine(output,"favorites-paged-"+style+".png"));

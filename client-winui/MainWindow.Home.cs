@@ -52,7 +52,7 @@ public sealed partial class MainWindow
         void ArrangeOverview(double width){bool wide=width>=900;overview.ColumnDefinitions[0].Width=wide?new GridLength(3,GridUnitType.Star):new GridLength(1,GridUnitType.Star);overview.ColumnDefinitions[1].Width=wide?new GridLength(2,GridUnitType.Star):new GridLength(0);Grid.SetColumn(progressCard,wide?1:0);Grid.SetRow(progressCard,wide?0:1);}
         overview.SizeChanged+=(_,e)=>ArrangeOverview(e.NewSize.Width);ArrangeOverview(0);panel.Children.Add(overview);
 
-        var columns=new Grid {ColumnSpacing=14};columns.ColumnDefinitions.Add(new ColumnDefinition());columns.ColumnDefinitions.Add(new ColumnDefinition());
+        var columns=new Grid {ColumnSpacing=24,RowSpacing=24};columns.ColumnDefinitions.Add(new ColumnDefinition());columns.ColumnDefinitions.Add(new ColumnDefinition());columns.RowDefinitions.Add(new RowDefinition());columns.RowDefinitions.Add(new RowDefinition());
         var next=Stack(10);next.Children.Add(Text("接下来的安排",18,true));
         var upcoming=schedule.Where(s=>!s.Completed&&DateTimeOffset.TryParse(s.StartAt,out _)).OrderBy(s=>DateTimeOffset.Parse(s.StartAt)).Take(5).ToList();
         if(upcoming.Count==0)next.Children.Add(Text("暂无待办。可以从职位投递记录添加笔试、面试或跟进安排。",13));
@@ -69,7 +69,9 @@ public sealed partial class MainWindow
         var examQuestions=decks.Where(d=>d.StudyType=="exam").SelectMany(d=>d.Questions).ToList();
         int examDue=examQuestions.Count(q=>q.Status!="remembered");
         if(examDue>0)follow.Children.Add(Button($"笔试复盘 · {examDue} 道待完成",()=>Navigate("exams")));
-        Grid.SetColumn(follow,1);columns.Children.Add(follow);panel.Children.Add(Card(columns));
+        Grid.SetColumn(follow,1);columns.Children.Add(follow);
+        void ArrangeTasks(double width){bool wide=width>=640;columns.ColumnDefinitions[1].Width=wide?new GridLength(1,GridUnitType.Star):new GridLength(0);Grid.SetColumn(follow,wide?1:0);Grid.SetRow(follow,wide?0:1);}
+        columns.SizeChanged+=(_,e)=>ArrangeTasks(e.NewSize.Width);ArrangeTasks(0);panel.Children.Add(Card(columns));
         if(resumes.Count>1){panel.Children.Add(Text("最近修改的简历",18,true));
             foreach(var resume in resumes.OrderByDescending(r=>r.UpdatedAt).Skip(1).Take(3))panel.Children.Add(Button(resume.Title+"  ·  "+(resume.Profile.Role is {Length:>0} role?role:"待填写目标岗位")+"  ·  "+LocalDate(resume.UpdatedAt),async ()=>{current=resume;dirty=false;await OpenEditor();}));}
         FillScroll(panel);

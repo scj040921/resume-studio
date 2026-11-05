@@ -67,7 +67,11 @@ public sealed partial class MainWindow
         Check(button.Content?.ToString()=="交互测试","failed opt-in action never shows completion");
         var choice=new CheckBox {IsChecked=false};var dependent=new Button();LinkedChoice(choice,dependent);Check(!dependent.IsEnabled,"unchecked linked option disables its dependent control");choice.IsChecked=true;Check(dependent.IsEnabled,"checked linked option enables its dependent control");choice.IsChecked=false;Check(!dependent.IsEnabled,"clearing linked option disables its dependent control again");
         body.UpdateLayout();await Task.Delay(80);var pageVisual=ElementCompositionPreview.GetElementVisual(body);RevealPage(body,new Windows.Foundation.Point(20,20));
-        Check(!Animate||pageVisual.Clip is Microsoft.UI.Composition.CompositionGeometricClip,"native circular page reveal uses a geometric clip when motion is enabled");await Task.Delay(420);Check(pageVisual.Clip is null,"native page reveal releases its temporary clip");
+        Check(pageVisual.Clip is null,"native page fade keeps the destination unobscured by geometric masks");await Task.Delay(220);Check(pageVisual.Opacity==1,"native page fade settles at full opacity");
+        var wrapping=Flow();for(int i=0;i<4;i++)wrapping.Children.Add(new Button {Content="布局验证",Width=180,Height=40});
+        wrapping.Measure(new Windows.Foundation.Size(390,400));wrapping.Arrange(new Windows.Foundation.Rect(0,0,390,wrapping.DesiredSize.Height));
+        var slots=wrapping.Children.Cast<FrameworkElement>().Select(Microsoft.UI.Xaml.Controls.Primitives.LayoutInformation.GetLayoutSlot).ToArray();
+        Check(slots[2].Y>=slots[0].Bottom&&slots.All(rect=>rect.Right<=391),"action toolbar wraps in reading order without overflowing a narrow viewport");
         ScaleTo(button,1.035f);await Task.Delay(350);var scale=ElementCompositionPreview.GetElementVisual(button).Scale;
         Check(Math.Abs(scale.X-(Animate?1.035f:1))<.002,"actual composition scale animation reaches the requested hover state");
         motionEnabled=false;ScaleTo(button,1.035f);Check(ElementCompositionPreview.GetElementVisual(button).Scale.X==1,"reduced motion resets composition scale immediately");motionEnabled=preferences.MotionEnabled;

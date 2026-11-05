@@ -26,7 +26,7 @@ public sealed partial class MainWindow
         void Selected(string key)
         {
             if(haruStyle) Check(ReferenceEquals(modernNavigation!.SelectedItem, modernNavigationItems[key]), "Haru selects " + key);
-            else Check(((SolidColorBrush)navigation.Single(b => (string)b.Tag == key).Background).Color == ((SolidColorBrush)Brush("#294267")).Color, "classic highlights " + key);
+            else Check(((SolidColorBrush)navigation.Single(b => (string)b.Tag == key).Background).Color == ((SolidColorBrush)Brush(darkStyle?"#39433C":"#DCE4DB")).Color, "classic highlights " + key);
         }
         try
         {

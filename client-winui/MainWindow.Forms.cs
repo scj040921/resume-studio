@@ -17,10 +17,10 @@ public sealed partial class MainWindow
         dialog.PrimaryButtonClick+=async (_,args)=> {
             if(submitting){args.Cancel=true;return;}submitting=true;
             var deferral=args.GetDeferral();args.Cancel=true;
-            dialog.IsPrimaryButtonEnabled=dialog.IsSecondaryButtonEnabled=false;form.IsEnabled=false;error.IsOpen=false;
+            dialog.IsPrimaryButtonEnabled=dialog.IsSecondaryButtonEnabled=false;form.IsEnabled=false;error.IsOpen=false;dialog.PrimaryButtonText="正在保存…";
             try {await save();args.Cancel=false;}
-            catch(Exception ex) {error.Message=ex.Message;error.IsOpen=true;}
-            finally {submitting=false;form.IsEnabled=true;dialog.IsPrimaryButtonEnabled=true;dialog.IsSecondaryButtonEnabled=!string.IsNullOrEmpty(dialog.SecondaryButtonText);deferral.Complete();}
+            catch(Exception ex) {error.Message=ex.Message;error.IsOpen=true;error.Focus(FocusState.Programmatic);}
+            finally {dialog.PrimaryButtonText=saveLabel;submitting=false;form.IsEnabled=true;dialog.IsPrimaryButtonEnabled=true;dialog.IsSecondaryButtonEnabled=!string.IsNullOrEmpty(dialog.SecondaryButtonText);deferral.Complete();}
         };
         return dialog;
     }

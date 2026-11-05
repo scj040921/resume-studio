@@ -14,10 +14,10 @@ public sealed partial class MainWindow
         int generation=navigationRevision;
         Heading("模板中心","GitHub 高星简历模板，按前端、后端、嵌入式和通用型分类。");
         var panel=Stack(18);
-        var hero=Stack(7); hero.Children.Add(Text("从开源好模板，开始你的简历。",24,true));
-        hero.Children.Add(Text($"{templates.Count(t=>t.Origin=="github")} 套岗位适配  ·  4 个高星模板仓库  ·  实时预览与 PDF 导出",14));
-        hero.Children.Add(Text("保留原模板版式特征，移植为中文 A4 编辑版；岗位分类与填写引导由拾简补充。星数核实于 2026-10-12。",12)); panel.Children.Add(Card(hero,new Thickness(24)));
-        var filters=Row(); var search=new TextBox { PlaceholderText="模板、仓库或技术关键词",Width=270 };
+        var hero=Stack(7); hero.Children.Add(Text("选择版式，开始填写",18,true));
+        hero.Children.Add(Text($"{templates.Count(t=>t.Origin=="github")} 套岗位适配版式 · 支持实时预览与 PDF 导出",13));
+        hero.Children.Add(Text("保留原模板版式特征，移植为中文 A4 编辑版；岗位分类与填写引导由拾简补充。星数核实于 2026-10-12。",12)); panel.Children.Add(Card(hero,new Thickness(18)));
+        var filters=Flow(); var search=new TextBox { PlaceholderText="模板、仓库或技术关键词",Width=270 };
         var category=new ComboBox { Width=150,ItemsSource=new[] {"全部","前端开发","后端开发","嵌入式开发","通用型"},SelectedItem=templateCategory };
         var origin=new ComboBox { Width=160,ItemsSource=new[] {"GitHub 高星模板","内置旧模板","全部来源"},SelectedIndex=templateOrigin=="github"?0:templateOrigin=="builtin"?1:2 };
         var sort=new ComboBox { Width=135,ItemsSource=new[] {"高星优先","名称排序"},SelectedIndex=0 };
@@ -42,7 +42,7 @@ public sealed partial class MainWindow
                     c.Children.Add(Text(t.SourceRepo+"  ·  "+t.License,11));
                     var source=Button("来源与移植说明 ↗",()=>ShowTemplateSource(t)); source.FontSize=11; source.HorizontalAlignment=HorizontalAlignment.Left; c.Children.Add(source);
                 }
-                var buttons=Row(7); buttons.Children.Add(Button("预览",()=>PreviewTemplate(t))); buttons.Children.Add(Button("使用模板",()=>CreateResume(t),true)); c.Children.Add(buttons);
+                var buttons=Flow(7); buttons.Children.Add(Button("预览",()=>PreviewTemplate(t))); buttons.Children.Add(Button("使用模板",()=>CreateResume(t),true)); c.Children.Add(buttons);
                 var card=Card(c,new Thickness(18)); Grid.SetRow(card,i/columns); Grid.SetColumn(card,i%columns); cards.Children.Add(card);
             }
             if(list.Count==0) { cards.RowDefinitions.Add(new RowDefinition()); cards.Children.Add(Text("没有匹配的模板，试试其他分类或关键词。")); }

@@ -30,7 +30,7 @@ public sealed partial class MainWindow
         var companies=await api.Get<List<CompanySource>>("job-sources");
         if(!PageIsCurrent("jobs",navigationGeneration)) return;
         body.RowDefinitions.Add(new RowDefinition { Height=GridLength.Auto }); body.RowDefinitions.Add(new RowDefinition { Height=new GridLength(1,GridUnitType.Star) });
-        var controls=Stack(11); var filters=Row();
+        var controls=Stack(11); var filters=Flow();
         var keyword=new TextBox { PlaceholderText="关键词：Java / embedded / 前端",Text=jobKeyword,Width=260 }; var city=new TextBox { PlaceholderText="城市 / 地点",Text=jobCity,Width=155 };
         var choices=new List<CompanySource> { new() { Id="all",Name="全部启用的企业官网" } }; choices.AddRange(companies);
         var provider=new ComboBox { ItemsSource=choices,SelectedItem=choices.FirstOrDefault(x=>x.Id==jobProvider)??choices[0],Width=210 };
@@ -65,7 +65,7 @@ public sealed partial class MainWindow
         keyword.TextChanged+=(_,_)=>jobKeyword=keyword.Text; city.TextChanged+=(_,_)=>jobCity=city.Text;
         provider.SelectionChanged+=(_,_)=>jobProvider=((CompanySource)provider.SelectedItem).Id;
         filters.Children.Add(Button("查询官网职位",()=>Search(1),true)); filters.Children.Add(Button("取消",()=> { CancelJobSearch(); status.Text="已取消本次等待。已显示的结果保留；后台官网请求会在限定时间内结束。"; return Task.CompletedTask; })); controls.Children.Add(filters);
-        var actions=Row(); actions.Children.Add(Button("公司来源管理",()=>Navigate("sources"))); actions.Children.Add(Button("添加公司官网",()=>EditCompanySource(new CompanySource()))); actions.Children.Add(Button("BOSS 登录并采集",()=>OpenPlatformCaptureAsync("boss",keyword.Text))); actions.Children.Add(Button("牛客浏览并采集",()=>OpenPlatformCaptureAsync("nowcoder",keyword.Text))); controls.Children.Add(actions); controls.Children.Add(status); controls.Margin=new Thickness(0,0,0,15); body.Children.Add(controls);
+        var actions=Flow(); actions.Children.Add(Button("公司来源管理",()=>Navigate("sources"))); actions.Children.Add(Button("添加公司官网",()=>EditCompanySource(new CompanySource()))); actions.Children.Add(Button("BOSS 登录并采集",()=>OpenPlatformCaptureAsync("boss",keyword.Text))); actions.Children.Add(Button("牛客浏览并采集",()=>OpenPlatformCaptureAsync("nowcoder",keyword.Text))); controls.Children.Add(actions); controls.Children.Add(status); controls.Margin=new Thickness(0,0,0,15); body.Children.Add(controls);
         var list=new Grid { RowSpacing=10 }; list.RowDefinitions.Add(new RowDefinition { Height=GridLength.Auto }); list.RowDefinitions.Add(new RowDefinition { Height=new GridLength(1,GridUnitType.Star) }); list.RowDefinitions.Add(new RowDefinition { Height=GridLength.Auto });
         list.Children.Add(new Expander { Header="本次各公司来源状态",Content=new ScrollViewer {Content=sourcePanel,MaxHeight=240},HorizontalAlignment=HorizontalAlignment.Stretch }); Grid.SetRow(results,1); list.Children.Add(results);
         var paging=Row(); paging.Children.Add(Button("上一页",()=>Search(Math.Max(1,jobPage-1)))); paging.Children.Add(Button("下一页",()=>Search(Math.Min(100,jobPage+1)))); Grid.SetRow(paging,2); list.Children.Add(paging); Grid.SetRow(list,1); body.Children.Add(list);

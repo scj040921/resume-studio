@@ -339,20 +339,43 @@ body.dark:not(.classic) .overview-list{box-shadow:inset 0 1px #ffffff10}
 .study-answer-content .answer{max-width:68ch;line-height:1.8}
 @media(hover:hover) and (pointer:fine){.overview-row:hover{color:var(--accent)}}
 
-/* A deeper glass surface distinguishes the active workspace from its canvas. */
-body:not(.classic){background:radial-gradient(ellipse at 8% 0%,color-mix(in srgb,var(--accent) 13%,transparent),transparent 42%),radial-gradient(ellipse at 95% 55%,color-mix(in srgb,#829caf 17%,transparent),transparent 48%),var(--bg)}
-body:not(.classic) .overview-hero{background:linear-gradient(145deg,color-mix(in srgb,var(--card) 84%,var(--tint)),color-mix(in srgb,var(--tint) 64%,transparent));border-color:color-mix(in srgb,var(--card) 82%,var(--line));box-shadow:inset 0 1px #ffffffb0,0 12px 30px #183d3019}
-body.dark:not(.classic) .overview-hero{background:linear-gradient(145deg,color-mix(in srgb,var(--card) 90%,var(--accent)),color-mix(in srgb,var(--card) 70%,transparent));border-color:#ffffff28;box-shadow:inset 0 1px #ffffff22,0 12px 30px #00000040}
-body.motion .overview-row{transition:color .18s ease,background-color .18s ease}
-body.motion .overview-row:active{background:color-mix(in srgb,var(--accent) 8%,transparent)}
-@media(prefers-reduced-motion:reduce){body.motion .overview-row{transition:none}}
+/* Workspace foundations: glass chrome, quiet reading surfaces, semantic feedback. */
+:root{--ink:#242927;--muted:#626c66;--bg:#f3f5f2;--card:#fff;--line:#dde1dd;--tint:#eaf0eb;--accent:#236c65;--control-radius:8px;--surface-radius:10px;--float-shadow:0 12px 36px #18251c20;--ease-out:cubic-bezier(.23,1,.32,1)}
+body.dark,body.classic.dark{--ink:#ecedeb;--muted:#bac1bc;--bg:#1b1e1c;--card:#252827;--line:#444946;--tint:#303a34;--accent:#87c9c0}
+body:not(.classic),body.classic{background:var(--bg)}
+body:not(.classic) .card,body:not(.classic) .overview-list,body:not(.classic) .overview-hero,.card,.hero{background:var(--card);border:1px solid var(--line);box-shadow:none;border-radius:var(--surface-radius);backdrop-filter:none}
+body.dark:not(.classic) .overview-hero,body.dark:not(.classic) .overview-list{background:var(--card);box-shadow:none}
+.appbar,nav{background:color-mix(in srgb,var(--bg) 88%,transparent);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);box-shadow:none}
+h1{font-size:24px;letter-spacing:0;line-height:1.4}h2{font-size:18px;line-height:1.5}h3{line-height:1.5}
+.brand{font-size:22px;letter-spacing:0}.brand span,.eyebrow{letter-spacing:0}
+button{background:var(--card);border:1px solid var(--line);color:var(--ink);border-radius:var(--control-radius);box-shadow:none;min-height:44px;transition:background-color 140ms ease,border-color 140ms ease,transform 100ms ease-out}
+button.primary{background:#263f38;color:#fff;border-color:transparent;box-shadow:none}
+body.dark button.primary{background:#dce9e2;color:#1e2924}
+button.danger{color:var(--danger);border-color:color-mix(in srgb,var(--danger) 35%,var(--line))}
+button:disabled{cursor:default;opacity:.5;transform:none;filter:none}
+button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible{outline:2px solid var(--accent);outline-offset:3px}
+input,textarea,select{background:var(--card);border-radius:var(--control-radius)}
+.stat,.save-status{font-variant-numeric:tabular-nums}.home-grid .stat-card{box-shadow:none;background:transparent;border-radius:0}
+nav button,nav button.active{background:transparent;border:0;box-shadow:none}
+.modal{border-radius:14px;box-shadow:var(--float-shadow)}
+.template-art{background:var(--tint)}
+body.motion .card:hover,body.motion .card.clickable:hover{transform:none;box-shadow:none}
+@media(hover:hover) and (pointer:fine){button:not(:disabled):hover{background:var(--tint);filter:none;transform:none}button.primary:not(:disabled):hover{background:#315147;color:#fff}body.dark button.primary:not(:disabled):hover{background:#bfd7c9;color:#1e2924}}
+body.motion button:not(:disabled):active{transform:scale(.985);filter:none}
+@media(prefers-reduced-motion:reduce){*,*::before,*::after{scroll-behavior:auto!important;animation:none!important;transition:none!important}}
 
-/* Let the record title lead; secondary actions remain grouped below it. */
-#list-items>.card{padding:16px 18px;margin:10px 0}
-body:not(.classic) #list-items>.card{background:color-mix(in srgb,var(--card) 58%,transparent);box-shadow:inset 0 1px #ffffff60}
-#list-items .list-primary{border-radius:8px;cursor:pointer}
-#list-items .list-primary:focus-visible{outline:2px solid var(--accent);outline-offset:4px}
-#list-items .list-primary h2{font-size:17px;font-weight:600;line-height:1.4}
-#list-items .list-primary .meta{margin:4px 0 0}
-#list-items>.card>.actions{margin-top:12px;padding-top:10px}
-@media(hover:hover) and (pointer:fine){#list-items .list-primary:hover h2{color:var(--accent)}}
+/* One form and action rhythm across editor, agenda, review and preferences. */
+.empty-state{padding:24px;max-width:620px;margin:22px auto;text-align:left}
+.empty-state p{max-width:48ch;margin:8px 0 18px}
+.toolbar{align-items:end;gap:8px}.toolbar input{min-width:180px}
+.actions{align-items:center}.actions button{flex:0 1 auto}
+#list-items .list-primary h2{font-size:17px;margin-bottom:4px}
+#list-items .card{padding:16px 18px}#list-items .actions{padding-top:10px;border-top:1px solid var(--line)}
+.exam-section{font-size:18px;line-height:1.5;margin-bottom:10px}.exam-question{font-size:16px;line-height:1.7}
+.exam-review-card textarea{min-height:180px}.exam-review-card details{margin:14px 0}
+summary{min-height:44px;display:flex;align-items:center;cursor:pointer;gap:8px}
+summary:focus-visible{outline:2px solid var(--accent);outline-offset:3px;border-radius:6px}
+body.motion .overlay:not([hidden]) .modal{animation:dialog-arrive 180ms var(--ease-out) both}
+@keyframes dialog-arrive{from{opacity:0;transform:translateY(8px) scale(.98)}to{opacity:1;transform:none}}
+@media(max-width:420px){.toolbar input{flex-basis:100%}.toolbar>button{flex:1}.actions>button{max-width:100%}.modal{padding:18px;max-height:88dvh}.overlay{padding:12px}.empty-state{padding:20px}}
+@media(prefers-reduced-motion:reduce){body.motion .overlay:not([hidden]) .modal{animation:none}}

@@ -38,17 +38,17 @@ public sealed partial class MainWindow
             var button = Button(node.Label, () => node.IsGroup ? ToggleClassicNavigationGroup(key) : Navigate(key));
             button.Tag = key; button.HorizontalAlignment = HorizontalAlignment.Stretch;
             button.HorizontalContentAlignment = HorizontalAlignment.Stretch;
-            button.Foreground = Brush("#CBD7EB"); button.Background = Brush("#14233F");
+            button.Foreground = Brush(Ink); button.Background = Brush(darkStyle?"#202422":"#EDF1EC");
             button.BorderThickness = new Thickness(0); button.Padding = new Thickness(12, 12, 12, 12);
             var content = new Grid { ColumnSpacing = 10 };
             content.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
             content.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
             content.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
             content.Children.Add(new FontIcon { Glyph = node.Glyph, FontSize = 16 });
-            var label = Text(node.Label, 14); label.Foreground = Brush("#CBD7EB");
+            var label = Text(node.Label, 14); label.Foreground = Brush(Ink);
             label.TextWrapping = TextWrapping.NoWrap; label.TextTrimming = TextTrimming.CharacterEllipsis;
             Grid.SetColumn(label, 1); content.Children.Add(label); classicLabels.Add(key, label);
-            var underline=new Border {Height=2,VerticalAlignment=VerticalAlignment.Bottom,HorizontalAlignment=HorizontalAlignment.Stretch,Margin=new Thickness(0,0,0,-5),CornerRadius=new CornerRadius(1),Background=Brush("#B7CBFF"),Opacity=0,IsHitTestVisible=false};
+            var underline=new Border {Height=2,VerticalAlignment=VerticalAlignment.Bottom,HorizontalAlignment=HorizontalAlignment.Stretch,Margin=new Thickness(0,0,0,-5),CornerRadius=new CornerRadius(1),Background=Brush(Accent),Opacity=0,IsHitTestVisible=false};
             Grid.SetColumn(underline,1);content.Children.Add(underline);classicUnderlines.Add(key,underline);
             if(node.IsGroup)
             {

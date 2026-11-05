@@ -3,6 +3,9 @@ $ErrorActionPreference='Stop'
 $root=Split-Path $PSScriptRoot -Parent
 if(!$OutputDirectory){$OutputDirectory=Join-Path $root ('artifacts/interactions-'+[guid]::NewGuid().ToString('N'))}
 $OutputDirectory=[IO.Path]::GetFullPath($OutputDirectory)
+if(Test-Path -LiteralPath (Join-Path $OutputDirectory 'interaction-result.json')){
+    $OutputDirectory=Join-Path $OutputDirectory ('run-'+[guid]::NewGuid().ToString('N'))
+}
 New-Item -ItemType Directory -Force -Path $OutputDirectory|Out-Null
 $savedData=$env:RESUMESTUDIO_TEST_DATA;$savedOutput=$env:RESUMESTUDIO_TEST_OUTPUT
 try{

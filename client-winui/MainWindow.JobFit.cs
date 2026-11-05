@@ -79,7 +79,7 @@ public sealed partial class MainWindow
         var key=new PasswordBox {Header="API Key",PlaceholderText=AiSecret.Exists(api.DataDirectory)?"已加密保存；留空保留现有密钥":"填写服务提供的密钥，本机无鉴权模型可留空"};
         panel.Children.Add(address); panel.Children.Add(model); panel.Children.Add(key);
         panel.Children.Add(Text("密钥由 Windows 按当前用户加密保存。更换接口地址时需重新填写密钥。只有主动获取建议时才发送简历模块与职位描述；请求可能产生服务费用。",12));
-        var actions=Row(); actions.Children.Add(Button("保存 AI 设置",async ()=> {
+        var actions=Flow(); actions.Children.Add(Button("保存 AI 设置",async ()=> {
             AiResumeClient.Endpoint(address.Text.Trim()); if(string.IsNullOrWhiteSpace(model.Text)) throw new InvalidOperationException("请填写模型名称。");
             if(address.Text.Trim()!=preferences.AiEndpoint&&string.IsNullOrEmpty(key.Password)) AiSecret.Delete(api.DataDirectory);
             if(!string.IsNullOrEmpty(key.Password)) await AiSecret.Save(api.DataDirectory,key.Password);

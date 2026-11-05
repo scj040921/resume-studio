@@ -31,7 +31,7 @@ public sealed partial class MainWindow
         // A deck restored from backup can reuse its original ID.
         deletedInterviewDeckIds.ExceptWith(decks.Select(d=>d.Id));
         body.RowDefinitions.Add(new RowDefinition {Height=GridLength.Auto});body.RowDefinitions.Add(new RowDefinition {Height=new GridLength(1,GridUnitType.Star)});body.RowDefinitions.Add(new RowDefinition {Height=GridLength.Auto});
-        var tools=Stack(9);var toolbar=Row();toolbar.VerticalAlignment=VerticalAlignment.Top;
+        var tools=Stack(9);var toolbar=Flow();toolbar.VerticalAlignment=VerticalAlignment.Top;
         toolbar.Children.Add(ToolbarField("",Button("＋ 导入题目文档",ImportInterviews,true)));
         var select=new ComboBox {ItemsSource=decks,MinWidth=200,MaxWidth=360,Tag="interview-deck"};
         var filter=new ComboBox {ItemsSource=new[]{"全部题目","未掌握","已记住","未标记","今日待复习"},MinWidth=140,Tag="interview-filter"};

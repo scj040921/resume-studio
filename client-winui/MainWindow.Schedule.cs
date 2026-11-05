@@ -23,7 +23,7 @@ public sealed partial class MainWindow
         Heading("求职日程","把笔试、面试、投递截止和自己的待办安排放在一起。");
         var entries=await ReadAgenda(); if(!PageIsCurrent("schedule",generation)) return;
         var panel=Stack(16);
-        panel.Children.Add(Button("导出到系统日历（ICS）",async ()=>{var picker=new Windows.Storage.Pickers.FileSavePicker {SuggestedFileName="求职日程"};picker.FileTypeChoices.Add("日历文件",new[]{".ics"});InitPicker(picker);var file=await picker.PickSaveFileAsync();if(file is not null){await File.WriteAllTextAsync(file.Path,CalendarExport.Create(await ReadAgenda()),new System.Text.UTF8Encoding(false));Success("日历已导出","可导入系统日历，在应用关闭时由日历提醒。");}})); var tools=Row();
+        panel.Children.Add(Button("导出到系统日历（ICS）",async ()=>{var picker=new Windows.Storage.Pickers.FileSavePicker {SuggestedFileName="求职日程"};picker.FileTypeChoices.Add("日历文件",new[]{".ics"});InitPicker(picker);var file=await picker.PickSaveFileAsync();if(file is not null){await File.WriteAllTextAsync(file.Path,CalendarExport.Create(await ReadAgenda()),new System.Text.UTF8Encoding(false));Success("日历已导出","可导入系统日历，在应用关闭时由日历提醒。");}})); var tools=Flow();
         tools.Children.Add(Button("＋ 新增日程",()=>EditSchedule(new ScheduleItem {StartAt=new DateTimeOffset(scheduleDate.AddHours(9),TimeZoneInfo.Local.GetUtcOffset(scheduleDate)).ToString("O")}),true));
         tools.Children.Add(Button("今天",async ()=> {scheduleDate=DateTime.Today; scheduleView=0; await Navigate("schedule");})); tools.Children.Add(Button("刷新",()=>Navigate("schedule"))); panel.Children.Add(tools);
         var metrics=new Grid {ColumnSpacing=10};for(int i=0;i<3;i++)metrics.ColumnDefinitions.Add(new ColumnDefinition {Width=new GridLength(1,GridUnitType.Star)});
@@ -62,7 +62,7 @@ public sealed partial class MainWindow
                 var details=Stack(9);string notes=entry.Item?.Notes??entry.Application?.Notes??"";details.Children.Add(Text(notes.Length>0?notes:"暂无备注，可在编辑中补充地点、准备事项或会议链接。",12));
                 details.Children.Add(Text(entry.Application is not null?"来自投递记录 · 修改与完成状态同步":"独立日程"+(entry.Item?.ApplicationId.Length>0?" · 已关联投递":"")+(entry.ReminderEnabled?" · "+ScheduleService.ReminderLabel(entry.ReminderMinutes):" · 提醒已关闭"),11));
                 var expand=Disclosure("",details,expandedSchedule.Contains(entry.Id),entry.Id);expand.Header=summary;expand.Expanding+=(_,_)=>expandedSchedule.Add(entry.Id);expand.Collapsed+=(_,_)=>expandedSchedule.Remove(entry.Id);item.Children.Add(expand);
-                var actions=Row(7);
+                var actions=Flow(7);
                 actions.Children.Add(Button("编辑",()=>entry.Item is not null?EditSchedule(entry.Item):EditApplication(entry.Application!,"schedule")));
                 var complete=Button(entry.Completed?"恢复待办":"标记完成",()=>CompleteAgenda(entry,!entry.Completed));
                 complete.IsEnabled=entry.Item is not null||entry.Application?.Status is not "已录用" and not "已结束";actions.Children.Add(complete);

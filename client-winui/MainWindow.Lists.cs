@@ -17,13 +17,21 @@ public sealed partial class MainWindow
         var jobs=await api.Get<List<Job>>("favorites"); if(!PageIsCurrent("favorites",generation)) return;
         body.RowDefinitions.Add(new RowDefinition {Height=GridLength.Auto}); body.RowDefinitions.Add(new RowDefinition {Height=new GridLength(1,GridUnitType.Star)});body.RowDefinitions.Add(new RowDefinition {Height=GridLength.Auto});
         var controls=Stack(12); controls.Margin=new Thickness(0,0,0,14); controls.Children.Add(Button("＋ 从 BOSS 等平台链接收藏",ImportExternalFavorite,true));
-        var browsing=Row();browsing.Children.Add(Button("BOSS 浏览并收藏",()=>OpenPlatformCaptureAsync("boss")));browsing.Children.Add(Button("牛客浏览并收藏",()=>OpenPlatformCaptureAsync("nowcoder")));controls.Children.Add(browsing);
-        var filters=Row(); var query=new TextBox { PlaceholderText="职位 / 公司 / 备注",Width=280,Text=favoriteQuery };
+        var browsing=Flow();browsing.Children.Add(Button("BOSS 浏览并收藏",()=>OpenPlatformCaptureAsync("boss")));browsing.Children.Add(Button("牛客浏览并收藏",()=>OpenPlatformCaptureAsync("nowcoder")));controls.Children.Add(browsing);
+        var filters=new Grid {ColumnSpacing=8,RowSpacing=8};filters.ColumnDefinitions.Add(new ColumnDefinition());filters.ColumnDefinitions.Add(new ColumnDefinition {Width=GridLength.Auto});filters.ColumnDefinitions.Add(new ColumnDefinition {Width=GridLength.Auto});filters.RowDefinitions.Add(new RowDefinition());filters.RowDefinitions.Add(new RowDefinition()); var query=new TextBox { PlaceholderText="搜索职位、公司、标签或备注",Text=favoriteQuery,HorizontalAlignment=HorizontalAlignment.Stretch };
+        Microsoft.UI.Xaml.Automation.AutomationProperties.SetName(query,"搜索职位收藏");
         var sources=new[] {"全部平台"}.Concat(jobs.Select(j=>j.Source).Where(s=>s.Length>0).Distinct()).ToList();
-        var source=new ComboBox { ItemsSource=sources,SelectedItem=sources.Contains(favoriteSource)?favoriteSource:sources[0],Width=180 }; filters.Children.Add(query); filters.Children.Add(source);filters.Children.Add(Button("清空筛选",()=>{query.Text="";source.SelectedIndex=0;return Task.CompletedTask;})); controls.Children.Add(filters);
+        var source=new ComboBox { ItemsSource=sources,SelectedItem=sources.Contains(favoriteSource)?favoriteSource:sources[0],Width=180 }; filters.Children.Add(query);Grid.SetColumn(source,1);filters.Children.Add(source);
+        var reset=Button("清空筛选",()=>{query.Text="";source.SelectedIndex=0;query.Focus(FocusState.Programmatic);return Task.CompletedTask;});Grid.SetColumn(reset,2);filters.Children.Add(reset);
+        Microsoft.UI.Xaml.Automation.AutomationProperties.SetName(source,"按收藏来源筛选");
+        void ArrangeFilters(double width){bool compact=width<620;Grid.SetColumnSpan(query,compact?3:1);Grid.SetRow(source,compact?1:0);Grid.SetColumn(source,compact?0:1);Grid.SetRow(reset,compact?1:0);Grid.SetColumn(reset,2);source.HorizontalAlignment=HorizontalAlignment.Left;}
+        filters.SizeChanged+=(_,e)=>ArrangeFilters(e.NewSize.Width);ArrangeFilters(0);controls.Children.Add(filters);
         controls.Children.Add(Button("标签／批量管理／截止提示",()=>ShowWorkspaceTools("favorites")));
         var count=Text("",12); controls.Children.Add(count); body.Children.Add(controls);
         var list=CreateJobList(true); Grid.SetRow(list,1); body.Children.Add(list);
+        var emptyText=Text("",14);var emptyTitle=Text("",18,true);var emptyContent=Stack(10);emptyContent.Children.Add(emptyTitle);emptyContent.Children.Add(emptyText);
+        var emptyAction=Button("清空筛选",()=>{query.Text="";source.SelectedIndex=0;return Task.CompletedTask;});emptyContent.Children.Add(emptyAction);
+        var empty=Card(emptyContent);empty.VerticalAlignment=VerticalAlignment.Top;empty.Visibility=Visibility.Collapsed;Grid.SetRow(empty,1);body.Children.Add(empty);
         // Keep page controls outside the scrolling list, so old favorites remain reachable.
         var footer=Stack(6);footer.Margin=new Thickness(0,12,0,0);
         var pager=Row(8);pager.HorizontalAlignment=HorizontalAlignment.Center;
@@ -40,7 +48,13 @@ public sealed partial class MainWindow
             string selected=source.SelectedItem as string??"全部平台";
             favoriteQuery=query.Text;favoriteSource=selected;
             var found=jobs.Where(j=>(j.Title+" "+j.Company+" "+j.Notes+" "+j.Tags).Contains(query.Text,StringComparison.OrdinalIgnoreCase)&&(selected=="全部平台"||j.Source==selected)).ToList();
+            bool hasFilter=query.Text.Length>0||selected!="全部平台";
+            empty.Visibility=found.Count==0?Visibility.Visible:Visibility.Collapsed;list.Visibility=found.Count==0?Visibility.Collapsed:Visibility.Visible;
+            emptyTitle.Text=jobs.Count==0?"保留值得投递的机会":"没有找到匹配的职位";
+            emptyText.Text=jobs.Count==0?"从上方粘贴职位链接，或浏览 BOSS、牛客的职位详情后收藏。":"试试公司名或更短的关键词，也可以清空筛选查看全部收藏。";
+            emptyAction.Visibility=hasFilter?Visibility.Visible:Visibility.Collapsed;reset.IsEnabled=hasFilter;
             int pageCount=(found.Count+favoritePageSize-1)/favoritePageSize;
+            footer.Visibility=found.Count==0?Visibility.Collapsed:Visibility.Visible;
             favoritePage=resetPage?1:Math.Clamp(favoritePage,1,Math.Max(1,pageCount));
             int offset=(favoritePage-1)*favoritePageSize;var pageJobs=found.Skip(offset).Take(favoritePageSize).ToList();
             list.ItemsSource=pageJobs;if(pageJobs.Count>0)list.ScrollIntoView(pageJobs[0]);

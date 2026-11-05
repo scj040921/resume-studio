@@ -25,26 +25,15 @@ public sealed partial class MainWindow
         SystemBackdrop=acrylic?new DesktopAcrylicBackdrop():new MicaBackdrop();
         nativeGlass=haruStyle&&NativeWindowGlass.Enable(handle,darkStyle);
         if(!haruStyle) NativeWindowGlass.Disable(handle);
-        if (!haruStyle) { shell.Background=Brush("#F5F7FB"); return; }
+        if (!haruStyle) { shell.Background=Brush(darkStyle?"#1B1E1C":"#F3F5F2"); return; }
         // Transparent hosts are essential: opaque NavigationView/card backgrounds cover the DWM acrylic.
         shell.Background=Brush(acrylic?(darkStyle?"#18191B25":"#14F7F7FA"):(darkStyle?"#252732":"#F7F7FA"));
         // One real window blur, with translucent tint on top. Per-card AcrylicBrush can fall back to
         // an opaque fill in desktop windows, hiding the glass; layering tints also avoids repeated blur work.
-        panelMaterial=new LinearGradientBrush {
-            StartPoint=new Windows.Foundation.Point(0,0),EndPoint=new Windows.Foundation.Point(0,1),
-            GradientStops={
-                new GradientStop {Color=((SolidColorBrush)Brush(darkStyle?"#78262A3A":"#B8FFFFFF")).Color,Offset=0},
-                new GradientStop {Color=((SolidColorBrush)Brush(darkStyle?"#4830384A":"#78E9EDF8")).Color,Offset=1}
-            }
-        };
-        edgeMaterial=new LinearGradientBrush {
-            StartPoint=new Windows.Foundation.Point(0,0),EndPoint=new Windows.Foundation.Point(0.6,1),
-            GradientStops={
-                new GradientStop {Color=((SolidColorBrush)Brush(darkStyle?"#66FFFFFF":"#D9FFFFFF")).Color,Offset=0},
-                new GradientStop {Color=((SolidColorBrush)Brush(darkStyle?"#1FFFFFFF":"#55FFFFFF")).Color,Offset=1}
-            }
-        };
-        navigationMaterial=Brush(darkStyle?"#B61A1F30":"#BFD6DFEF");
+        // Blur belongs to the window and navigation; reading surfaces remain stable.
+        panelMaterial=Brush(darkStyle?"#F2252827":"#F5FFFFFF");
+        edgeMaterial=Brush(darkStyle?"#444946":"#DDE1DD");
+        navigationMaterial=Brush(darkStyle?"#C8202422":"#C9EFF2EE");
     }
 
     private void ConfigureGlassNavigation(NavigationView nav)

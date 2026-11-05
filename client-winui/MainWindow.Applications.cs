@@ -37,9 +37,9 @@ public sealed partial class MainWindow
         int generation=navigationRevision;
         Heading("投递记录","跟踪进度、笔试与面试安排、投递快照及复盘。");
         var records=await api.Get<List<ApplicationRecord>>("applications"); if(!PageIsCurrent("applications",generation)) return;
-        var panel=Stack(16); var tools=Row(); tools.Children.Add(Button("＋ 手动添加投递",()=>EditApplication(new ApplicationRecord {Status="已投递"}),true)); tools.Children.Add(Button("刷新安排",()=>Navigate("applications"))); tools.Children.Add(Button("标签／批量进度／跟进提示",()=>ShowWorkspaceTools("applications")));panel.Children.Add(tools);
+        var panel=Stack(16); var tools=Flow(); tools.Children.Add(Button("＋ 手动添加投递",()=>EditApplication(new ApplicationRecord {Status="已投递"}),true)); tools.Children.Add(Button("刷新安排",()=>Navigate("applications"))); tools.Children.Add(Button("标签／批量进度／跟进提示",()=>ShowWorkspaceTools("applications")));panel.Children.Add(tools);
         panel.Children.Add(Text("安排提前 24 小时及到期时在应用内提醒；关闭应用期间不弹通知，重新打开会检查未处理事项。",12));
-        var query=new TextBox {PlaceholderText="搜索公司、职位或备注",Width=280,Text=applicationQuery}; var stage=new ComboBox {ItemsSource=new[] {"全部进度"}.Concat(ApplicationStages).ToList(),SelectedItem=applicationStage,Width=140}; var pending=new CheckBox {Content="仅看未处理安排",IsChecked=applicationPendingOnly}; var filters=Row(); filters.Children.Add(query); filters.Children.Add(stage); filters.Children.Add(pending);filters.Children.Add(Button("清空筛选",()=>{query.Text="";stage.SelectedIndex=0;pending.IsChecked=false;return Task.CompletedTask;})); panel.Children.Add(filters);
+        var query=new TextBox {PlaceholderText="搜索公司、职位或备注",Width=280,Text=applicationQuery}; var stage=new ComboBox {ItemsSource=new[] {"全部进度"}.Concat(ApplicationStages).ToList(),SelectedItem=applicationStage,Width=140}; var pending=new CheckBox {Content="仅看未处理安排",IsChecked=applicationPendingOnly}; var filters=Flow(); filters.Children.Add(query); filters.Children.Add(stage); filters.Children.Add(pending);filters.Children.Add(Button("清空筛选",()=>{query.Text="";stage.SelectedIndex=0;pending.IsChecked=false;return Task.CompletedTask;})); panel.Children.Add(filters);
         var count=Text("",12); panel.Children.Add(count); var cards=Stack(14); panel.Children.Add(cards);
         void Refresh()
         {
@@ -55,9 +55,9 @@ public sealed partial class MainWindow
                 card.Children.Add(new Expander {Header="进度时间线",Content=timeline,HorizontalAlignment=HorizontalAlignment.Stretch});
                 if(!string.IsNullOrWhiteSpace(r.Review)) card.Children.Add(new Expander {Header="面试／笔试复盘",Content=Text(r.Review,13),HorizontalAlignment=HorizontalAlignment.Stretch});
                 if(r.Id==focusedApplicationId)card.Children.Add(Text("当前关联的投递记录",12,true));
-                var actions=Row(); actions.Children.Add(Button("更新进度与安排",()=>EditApplication(r),true)); if(r.ResumeSnapshot is not null) actions.Children.Add(Button("查看投递快照",()=>ShowApplicationSnapshot(r)));
+                var actions=Flow(); actions.Children.Add(Button("更新进度与安排",()=>EditApplication(r),true)); if(r.ResumeSnapshot is not null) actions.Children.Add(Button("查看投递快照",()=>ShowApplicationSnapshot(r)));
                 actions.Children.Add(Button("打开原页面 ↗",()=>Launch(r.Url))); actions.Children.Add(Button("删除",async ()=> {if(await Confirm("删除投递记录？",r.Company+" · "+r.Title)) {await api.Delete("applications/"+r.Id); await Navigate("applications");}})); card.Children.Add(actions); cards.Children.Add(Card(card));
-                var agenda=Row();agenda.Children.Add(Button("查看关联日程",()=>OpenApplicationSchedule(r)));agenda.Children.Add(Button("＋ 新增关联日程",()=>AddApplicationSchedule(r)));card.Children.Add(agenda);
+                var agenda=Flow();agenda.Children.Add(Button("查看关联日程",()=>OpenApplicationSchedule(r)));agenda.Children.Add(Button("＋ 新增关联日程",()=>AddApplicationSchedule(r)));card.Children.Add(agenda);
             }
             if(found.Count==0) cards.Children.Add(Text("暂无符合条件的投递记录。",15));
         }
