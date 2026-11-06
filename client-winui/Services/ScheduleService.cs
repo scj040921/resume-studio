@@ -25,6 +25,14 @@ public static class ScheduleService
         return result.OrderBy(e=>e.At).ThenBy(e=>e.Id,StringComparer.Ordinal).ToList();
     }
     public static IEnumerable<AgendaEntry> ForDate(IEnumerable<AgendaEntry> entries,DateTime date)=>entries.Where(e=>e.Date==date.Date);
+    public static List<AgendaEntry> Overview(IEnumerable<AgendaEntry> entries,DateTimeOffset now,int limit=5)
+    {
+        if(limit<=0)return [];
+        var pending=entries.Where(e=>!e.Completed).ToList();
+        // Reserve room for upcoming appointments even when old overdue items remain unresolved.
+        return pending.Where(e=>e.Overdue(now)).OrderByDescending(e=>e.At).Take(Math.Min(2,limit))
+            .Concat(pending.Where(e=>!e.Overdue(now)).OrderBy(e=>e.At)).Take(limit).ToList();
+    }
     public static IEnumerable<AgendaEntry> Upcoming(IEnumerable<AgendaEntry> entries,DateTimeOffset now)=>entries.Where(e=>!e.Completed&&e.End>=now&&e.Date<=now.LocalDateTime.Date.AddDays(30));
     public static IEnumerable<AgendaEntry> Reminders(IEnumerable<AgendaEntry> entries,DateTimeOffset now)=>entries.Where(e=>!e.Completed&&e.ReminderEnabled&&e.At.AddMinutes(-e.ReminderMinutes)<=now);
 }

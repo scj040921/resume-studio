@@ -20,6 +20,8 @@ public sealed partial class MainWindow
     private static string Accent => darkStyle ? "#87C9C0" : "#236C65";
     private static string Ink => darkStyle ? "#ECEDEB" : "#242927";
     private static string Surface => darkStyle ? "#252827" : "#FFFFFF";
+    private static string ClearSurface => "#00000000";
+    private static string WarningInk => darkStyle ? "#F0CB81" : "#945B08";
     private static string Stroke => darkStyle ? "#444946" : "#DDE1DD";
     private void BuildContentHost()
     {

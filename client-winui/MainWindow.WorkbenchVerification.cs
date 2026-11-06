@@ -57,8 +57,30 @@ public sealed partial class MainWindow
             examplePreviewToggle.IsOn=true;await WaitForPreview();await SaveNativePreview(Path.Combine(output,"workbench-classic.png"));
             preferences.InterfaceStyle="haru";preferences.Theme="light";await ApplyPreferences();await WaitForPreview();await SaveNativePreview(Path.Combine(output,"workbench-haru.png"));
             ToggleLayoutSettings();await Task.Delay(180);await SaveNativePreview(Path.Combine(output,"workbench-layout.png"));ToggleLayoutSettings();
-            var folder=await Windows.Storage.StorageFolder.GetFolderFromPathAsync(output);var image=await folder.CreateFileAsync("workbench-preview.png",Windows.Storage.CreationCollisionOption.ReplaceExisting);
-            using(var stream=await image.OpenAsync(Windows.Storage.FileAccessMode.ReadWrite))await preview.CoreWebView2.CapturePreviewAsync(Microsoft.Web.WebView2.Core.CoreWebView2CapturePreviewImageFormat.Png,stream);
+            if(!Environment.GetCommandLineArgs().Contains("--skip-preview-capture")) {
+                var folder=await Windows.Storage.StorageFolder.GetFolderFromPathAsync(output);var image=await folder.CreateFileAsync("workbench-preview.png",Windows.Storage.CreationCollisionOption.ReplaceExisting);
+                using(var stream=await image.OpenAsync(Windows.Storage.FileAccessMode.ReadWrite))await preview.CoreWebView2.CapturePreviewAsync(Microsoft.Web.WebView2.Core.CoreWebView2CapturePreviewImageFormat.Png,stream);
+            }
+            async Task<TextBox> SummaryField()
+            {
+                for(int attempt=0;attempt<60;attempt++){
+                    var field=FindTextField(body,"个人简介");if(field is not null)return field;
+                    await Task.Delay(50);
+                }
+                throw new Exception("Basic information summary field did not mount");
+            }
+            SelectBasicInformation();await Task.Delay(150);
+            string originalSummary=current.Profile.Summary;
+            var summaryField=(await SummaryField());
+            summaryField.Text="连续输入甲";summaryField.Text="连续输入甲乙";await Task.Delay(100);
+            await UndoEditor(true);summaryField.Text="连续输入甲乙丙";await Task.Delay(100);
+            await UndoEditor(false);Check(current.Profile.Summary==originalSummary,"unavailable redo during typing preserves the complete undo group");
+            await UndoEditor(true);Check(current.Profile.Summary=="连续输入甲乙丙","redo restores the entire continuous typing burst");
+            (await SummaryField()).Text="停顿前的第一组";await Task.Delay(850);(await SummaryField()).Text="停顿后的第二组";await Task.Delay(100);
+            await UndoEditor(false);Check(current.Profile.Summary=="停顿前的第一组","a typing pause starts a separate undo group");
+            (await SummaryField()).Text="格式化前内容";await Task.Delay(100);FinalizeUndoBurst();(await SummaryField()).Text="**格式化前内容**";await Task.Delay(100);
+            await UndoEditor(false);Check(current.Profile.Summary=="格式化前内容","explicit formatting boundary preserves preceding text");
+            current.Profile.Summary=originalSummary;Changed();await SaveCurrent();FinalizeUndoBurst();
             await VerifyResumeLayout(output,checks);
             await VerifyWorkflow(output,checks);
             await File.WriteAllTextAsync(Path.Combine(output,"workbench-result.json"),JsonSerializer.Serialize(new {status="passed",checks},BackendClient.Json));

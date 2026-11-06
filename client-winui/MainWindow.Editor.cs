@@ -198,6 +198,7 @@ public sealed partial class MainWindow
     {
         if(current is null) return; int index=current.Sections.IndexOf(section),target=index+offset;
         if(target<0||target>=current.Sections.Count) return;
+        FinalizeUndoBurst();
         current.Sections.RemoveAt(index); current.Sections.Insert(target,section); selectedEditorPart=target+2;
         Changed(); await SaveCurrent(); await OpenEditor();
     }
@@ -222,10 +223,10 @@ public sealed partial class MainWindow
         if(current is null||current.Sections.SequenceEqual(editorModules))return false;
         // Native reordering changes the collection first; persist the final permutation once.
         if(editorModules.Count!=current.Sections.Count||editorModules.Distinct().Count()!=editorModules.Count||editorModules.Any(section=>!current.Sections.Contains(section)))return false;
-        current.Sections=editorModules.ToList();
+        FinalizeUndoBurst();current.Sections=editorModules.ToList();
         selectedEditorPart=selected is null?0:current.Sections.IndexOf(selected)+2;
         RefreshCompactModulePicker();
-        lastUndoCapture=DateTime.MinValue;Changed();return true;
+        Changed();return true;
     }
 
     private UIElement LayoutSettings(Resume resume)

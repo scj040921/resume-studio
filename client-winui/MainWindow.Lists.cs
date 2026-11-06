@@ -8,13 +8,14 @@ public sealed partial class MainWindow
 {
     private ListView? visibleJobList;
     private string favoriteQuery="",favoriteSource="全部平台";
-    private int favoritePage=1,favoritePageSize=20;
-    private void ResetFavoriteView(){favoriteQuery="";favoriteSource="全部平台";favoritePage=1;}
+    private int favoritePage=1,favoritePageSize=20,favoriteSort;
+    private void ResetFavoriteView(){favoriteQuery="";favoriteSource="全部平台";favoritePage=1;favoriteSort=0;}
     private async Task ShowFavorites()
     {
         int generation=navigationRevision;
         Heading("职位收藏","跨平台收藏到拾简，按平台与关键词整理。");
         var jobs=await api.Get<List<Job>>("favorites"); if(!PageIsCurrent("favorites",generation)) return;
+        var searchIndex=jobs.Select(job=>(Job:job,Text:string.Concat(job.Title," ",job.Company," ",job.Notes," ",job.Tags))).ToList();
         body.RowDefinitions.Add(new RowDefinition {Height=GridLength.Auto}); body.RowDefinitions.Add(new RowDefinition {Height=new GridLength(1,GridUnitType.Star)});body.RowDefinitions.Add(new RowDefinition {Height=GridLength.Auto});
         var controls=Stack(12); controls.Margin=new Thickness(0,0,0,14); controls.Children.Add(Button("＋ 从 BOSS 等平台链接收藏",ImportExternalFavorite,true));
         var browsing=Flow();browsing.Children.Add(Button("BOSS 浏览并收藏",()=>OpenPlatformCaptureAsync("boss")));browsing.Children.Add(Button("牛客浏览并收藏",()=>OpenPlatformCaptureAsync("nowcoder")));controls.Children.Add(browsing);
@@ -26,7 +27,8 @@ public sealed partial class MainWindow
         Microsoft.UI.Xaml.Automation.AutomationProperties.SetName(source,"按收藏来源筛选");
         void ArrangeFilters(double width){bool compact=width<620;Grid.SetColumnSpan(query,compact?3:1);Grid.SetRow(source,compact?1:0);Grid.SetColumn(source,compact?0:1);Grid.SetRow(reset,compact?1:0);Grid.SetColumn(reset,2);source.HorizontalAlignment=HorizontalAlignment.Left;}
         filters.SizeChanged+=(_,e)=>ArrangeFilters(e.NewSize.Width);ArrangeFilters(0);controls.Children.Add(filters);
-        controls.Children.Add(Button("标签／批量管理／截止提示",()=>ShowWorkspaceTools("favorites")));
+        var organize=Flow(10);organize.Children.Add(Button("标签／批量管理／截止提示",()=>ShowWorkspaceTools("favorites")));
+        var sort=new ComboBox {ItemsSource=new[] {"最近更新","按公司名称","按职位名称","截止时间优先"},SelectedIndex=favoriteSort,Width=170};sort.Tag="favorite-sort";Microsoft.UI.Xaml.Automation.AutomationProperties.SetName(sort,"收藏排序");organize.Children.Add(sort);controls.Children.Add(organize);
         var count=Text("",12); controls.Children.Add(count); body.Children.Add(controls);
         var list=CreateJobList(true); Grid.SetRow(list,1); body.Children.Add(list);
         var emptyText=Text("",14);var emptyTitle=Text("",18,true);var emptyContent=Stack(10);emptyContent.Children.Add(emptyTitle);emptyContent.Children.Add(emptyText);
@@ -48,7 +50,11 @@ public sealed partial class MainWindow
             string selected=source.SelectedItem as string??"全部平台";
             favoriteQuery=query.Text;favoriteSource=selected;
             string text=query.Text;
-            var found=jobs.Where(j=>(selected=="全部平台"||j.Source==selected)&&(text.Length==0||(j.Title+" "+j.Company+" "+j.Notes+" "+j.Tags).Contains(text,StringComparison.OrdinalIgnoreCase))).ToList();
+            var found=searchIndex.Where(entry=>(selected=="全部平台"||entry.Job.Source==selected)&&(text.Length==0||entry.Text.Contains(text,StringComparison.OrdinalIgnoreCase))).Select(entry=>entry.Job).ToList();
+            favoriteSort=sort.SelectedIndex;
+            if(favoriteSort==1)found=found.OrderBy(j=>j.Company,StringComparer.CurrentCultureIgnoreCase).ThenBy(j=>j.Title,StringComparer.CurrentCultureIgnoreCase).ToList();
+            else if(favoriteSort==2)found=found.OrderBy(j=>j.Title,StringComparer.CurrentCultureIgnoreCase).ThenBy(j=>j.Company,StringComparer.CurrentCultureIgnoreCase).ToList();
+            else if(favoriteSort==3)found=found.OrderBy(j=>DateTimeOffset.TryParse(j.DeadlineAt,out var deadline)?deadline:DateTimeOffset.MaxValue).ToList();
             bool hasFilter=query.Text.Length>0||selected!="全部平台";
             empty.Visibility=found.Count==0?Visibility.Visible:Visibility.Collapsed;list.Visibility=found.Count==0?Visibility.Collapsed:Visibility.Visible;
             emptyTitle.Text=jobs.Count==0?"保留值得投递的机会":"没有找到匹配的职位";
@@ -70,7 +76,7 @@ public sealed partial class MainWindow
         next.Click+=(_,_)=>{favoritePage++;Refresh();};
         pages.SelectionChanged+=(_,_)=>{if(!refreshing&&pages.SelectedIndex>=0){favoritePage=pages.SelectedIndex+1;Refresh();}};
         size.SelectionChanged+=(_,_)=>{if(size.SelectedIndex>=0){favoritePageSize=sizes[size.SelectedIndex];Refresh(true);}};
-        query.TextChanged+=(_,_)=>Refresh(true); source.SelectionChanged+=(_,_)=>Refresh(true); Refresh();
+        sort.SelectionChanged+=(_,_)=>Refresh(true);query.TextChanged+=(_,_)=>Refresh(true); source.SelectionChanged+=(_,_)=>Refresh(true); Refresh();
     }
     private ListView CreateJobList(bool favorite)
     {

@@ -11,6 +11,20 @@ import java.util.zip.GZIPOutputStream;
 public final class Store {
     private final Path root;
     private final ResumeHistory history;
+    private static void replaceFile(Path source,Path target) throws IOException {
+        for(int attempt=0;;attempt++) {
+            try {
+                try { Files.move(source,target,StandardCopyOption.REPLACE_EXISTING,StandardCopyOption.ATOMIC_MOVE); }
+                catch(AtomicMoveNotSupportedException e) { Files.move(source,target,StandardCopyOption.REPLACE_EXISTING); }
+                return;
+            } catch(AccessDeniedException e) {
+                // Windows scanners may briefly hold the destination. Keep the old file intact while retrying.
+                if(attempt>=4)throw e;
+                try { Thread.sleep(50L*(attempt+1)); }
+                catch(InterruptedException interrupted) { Thread.currentThread().interrupt();throw new IOException("保存已中断",interrupted); }
+            }
+        }
+    }
     public Store(Path root) throws IOException { this.root=root.toAbsolutePath().normalize(); Files.createDirectories(this.root); SyncStore.recover(this.root); history=new ResumeHistory(this.root); }
     public synchronized Map<String,Object> syncSnapshot() throws IOException {
         var snapshot=SyncStore.snapshot(root,this); return Map.of("snapshot",snapshot,"hash",SyncStore.hash(snapshot),"modifiedAt",SyncStore.modifiedAt(root,snapshot));
@@ -48,13 +62,11 @@ public final class Store {
         Path backup=p.resolveSibling(p.getFileName()+".bak.gz"), backupTemp=p.resolveSibling(p.getFileName()+".bak.gz.tmp");
         if (Files.exists(p)) {
             try (OutputStream out=new GZIPOutputStream(Files.newOutputStream(backupTemp))) { Files.copy(p,out); }
-            try { Files.move(backupTemp,backup,StandardCopyOption.REPLACE_EXISTING,StandardCopyOption.ATOMIC_MOVE); }
-            catch(AtomicMoveNotSupportedException e) { Files.move(backupTemp,backup,StandardCopyOption.REPLACE_EXISTING); }
+            replaceFile(backupTemp,backup);
             Files.deleteIfExists(p.resolveSibling(p.getFileName()+".bak"));
         }
         Files.writeString(temp,Json.write(copy));
-        try { Files.move(temp,p,StandardCopyOption.REPLACE_EXISTING,StandardCopyOption.ATOMIC_MOVE); }
-        catch(AtomicMoveNotSupportedException e) { Files.move(temp,p,StandardCopyOption.REPLACE_EXISTING); }
+        replaceFile(temp,p);
         return copy;
     }
     public synchronized List<Map<String,Object>> list(String kind) throws IOException {

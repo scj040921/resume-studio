@@ -50,6 +50,9 @@ public sealed partial class MainWindow
     private async Task RenderPreview()
     {
         if(currentPage!="editor"||current is null||preview?.CoreWebView2 is null) return;
+        // A direct refresh supersedes the delayed refresh scheduled by Changed().
+        // Edits made while this render is running can still schedule a new one.
+        previewTimer.Stop();
         var web=preview;int generation=navigationRevision;
         await renderLock.WaitAsync();
         try

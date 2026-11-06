@@ -443,3 +443,10 @@ nav button{border-radius:21px}
 .home-grid{gap:8px;border:0;border-radius:0;overflow:visible;background:transparent}
 body:not(.classic) .home-grid .stat-card,.home-grid .stat-card{border:1px solid var(--overview-rule);border-radius:14px;}
 @media(prefers-reduced-motion:reduce){fluent-button{transition:none}}
+.home-quick-actions{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin:16px 0 28px}
+.home-quick-actions fluent-button{min-width:0;min-height:48px;white-space:nowrap;font-size:13px}
+.overview-row.agenda-row{display:flex;align-items:center;gap:14px;padding:14px 16px;border-radius:18px}
+.agenda-date{flex:0 0 52px;font-variant-numeric:tabular-nums;color:var(--accent);font-weight:600}
+.agenda-date small{font-weight:400}
+.agenda-label{flex:1;min-width:0;overflow-wrap:anywhere}
+@media(max-width:380px){.home-quick-actions{grid-template-columns:1fr}.overview-row.agenda-row{gap:10px}}

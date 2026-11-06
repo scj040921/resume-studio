@@ -22,6 +22,13 @@ upcoming.Completed=false;upcoming.StartAt=now.AddDays(31).ToString("O");Check(!S
 upcoming.StartAt=now.AddDays(-1).ToString("O");Check(ScheduleService.Merge([upcoming],[])[0].Overdue(now),"past incomplete event remains overdue");
 var orphan=ScheduleService.Merge([upcoming],[])[0];Check(orphan.Item is not null&&orphan.Company=="","deleting linked application retains independent schedule");
 Console.WriteLine($"PASS: {checks} schedule date, reminder and projection checks");
+var oldItems=Enumerable.Range(1,5).Select(i=>new ScheduleItem {Id="old-"+i,Title="Overdue",StartAt=now.AddDays(-i).ToString("O")}).ToList();
+oldItems.Add(new ScheduleItem {Id="next",Title="Next interview",StartAt=now.AddHours(1).ToString("O")});
+var home=ScheduleService.Overview(ScheduleService.Merge(oldItems,[application]),now);
+Check(home.Count(e=>e.Overdue(now))==2&&home.Any(e=>e.Id=="schedule:next"),"home keeps upcoming appointments visible alongside overdue items");
+Check(home.All(e=>!e.Completed)&&ScheduleService.Overview(entries,now,0).Count==0,"home excludes completed entries and respects zero limit");
+application.ReminderDone=false;
+Check(ScheduleService.Overview(ScheduleService.Merge([], [application]),now).Any(e=>e.ApplicationId==application.Id),"home includes projected application appointments");
 
 var calendarItem=new ScheduleItem {Id="calendar",Title="面试,中文;\n"+new string('中',100),StartAt="2026-10-18T09:00:00+08:00",ReminderEnabled=true,ReminderMinutes=15,AllDay=true};
 var ics=CalendarExport.Create(ScheduleService.Merge(new[]{calendarItem},Array.Empty<ApplicationRecord>()));

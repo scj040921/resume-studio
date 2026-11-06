@@ -28,8 +28,8 @@ public sealed partial class MainWindow
         tools.Children.Add(Button("今天",async ()=> {scheduleDate=DateTime.Today; scheduleView=0; await Navigate("schedule");})); tools.Children.Add(Button("刷新",()=>Navigate("schedule"))); panel.Children.Add(tools);
         var metrics=new Grid {ColumnSpacing=10};for(int i=0;i<3;i++)metrics.ColumnDefinitions.Add(new ColumnDefinition {Width=new GridLength(1,GridUnitType.Star)});
         var pending=entries.Where(e=>!e.Completed).ToList();int metricIndex=0;
-        foreach(var stat in new[] {("今日安排",pending.Count(e=>e.Date==DateTime.Today),"#245AE8"),("近七天",pending.Count(e=>e.End>=DateTimeOffset.Now&&e.Date<=DateTime.Today.AddDays(6)),"#167D78"),("已到期待办",pending.Count(e=>e.Overdue(DateTimeOffset.Now)),"#CC7B20")}) {
-            var content=Stack(4);var value=Text(stat.Item2.ToString(),26,true);value.Foreground=Brush(stat.Item3);content.Children.Add(value);content.Children.Add(Text(stat.Item1,12));var card=Card(content,new Thickness(16));Grid.SetColumn(card,metricIndex++);metrics.Children.Add(card);
+        foreach(var stat in new[] {("今日安排",pending.Count(e=>e.Date==DateTime.Today),Accent,0),("近期 30 天",ScheduleService.Upcoming(entries,DateTimeOffset.Now).Count(),Accent,1),("已到期待办",pending.Count(e=>e.Overdue(DateTimeOffset.Now)),"#A56A05",4)}) {
+            var content=Stack(4);var value=Text(stat.Item2.ToString(),26,true);value.Foreground=Brush(stat.Item3);content.Children.Add(value);content.Children.Add(Text(stat.Item1+" →",12));var card=Button(stat.Item1,async ()=>{scheduleView=stat.Item4;if(scheduleView==0)scheduleDate=DateTime.Today;scheduleQuery="";scheduleKind="全部类型";scheduleApplicationId="";await Navigate("schedule");});card.Content=content;card.HorizontalAlignment=HorizontalAlignment.Stretch;card.HorizontalContentAlignment=HorizontalAlignment.Left;Grid.SetColumn(card,metricIndex++);metrics.Children.Add(card);
         }panel.Children.Add(metrics);
         panel.Children.Add(Text("投递记录中的下一次安排会自动显示；在日程中可另外添加多次面试或自定义事项。运行时发送系统通知；关闭软件后的提醒可使用导出的系统日历，重新打开也会检查未处理事项。",12));
         var grid=new Grid {ColumnSpacing=18,RowSpacing=18}; grid.ColumnDefinitions.Add(new ColumnDefinition {Width=GridLength.Auto}); grid.ColumnDefinitions.Add(new ColumnDefinition {Width=new GridLength(1,GridUnitType.Star)}); grid.RowDefinitions.Add(new RowDefinition {Height=GridLength.Auto}); grid.RowDefinitions.Add(new RowDefinition {Height=GridLength.Auto});
@@ -42,7 +42,7 @@ public sealed partial class MainWindow
         foreach(var type in new[] {"笔试","面试","投递截止","自定义"}) {var add=Button("＋ "+type,()=>EditSchedule(new ScheduleItem {Kind=type,StartAt=new DateTimeOffset(scheduleDate.AddHours(9),TimeZoneInfo.Local.GetUtcOffset(scheduleDate)).ToString("O")}));add.HorizontalAlignment=HorizontalAlignment.Stretch;ToolTipService.SetToolTip(add,$"在所选日期新建{type}");Grid.SetColumn(add,quickIndex%2);Grid.SetRow(add,quickIndex++/2);quick.Children.Add(add);}month.Children.Add(Text("在所选日期快速添加",12));month.Children.Add(quick);
         var monthCard=Card(month,new Thickness(16)); monthCard.MaxWidth=430; monthCard.VerticalAlignment=VerticalAlignment.Top; grid.Children.Add(monthCard);
         var list=Stack(12); var heading=Text("",18,true); list.Children.Add(heading);
-        var mode=new ComboBox {Header="查看范围",ItemsSource=new[] {"所选日期","近期 30 天","全部未完成","全部日程（含已完成）"},SelectedIndex=scheduleView,HorizontalAlignment=HorizontalAlignment.Stretch}; list.Children.Add(mode);
+        var mode=new ComboBox {Header="查看范围",ItemsSource=new[] {"所选日期","近期 30 天","全部未完成","全部日程（含已完成）","已到期未完成"},SelectedIndex=scheduleView,HorizontalAlignment=HorizontalAlignment.Stretch}; list.Children.Add(mode);
         var types=new ComboBox {Header="日程类型筛选",ItemsSource=new[] {"全部类型"}.Concat(ScheduleService.Kinds).ToArray(),SelectedItem=scheduleKind,HorizontalAlignment=HorizontalAlignment.Stretch};list.Children.Add(types);
         var query=new TextBox {PlaceholderText="搜索事项、公司或备注",MaxLength=200,Text=scheduleQuery}; list.Children.Add(query); var cards=Stack(12);Entrance(cards);list.Children.Add(cards);
         var clear=Button("清空筛选",()=>{scheduleApplicationId="";query.Text="";types.SelectedIndex=0;return RefreshPage("schedule");});list.Children.Insert(list.Children.Count-1,clear);
@@ -50,11 +50,11 @@ public sealed partial class MainWindow
         void Refresh()
         {
             cards.Children.Clear(); scheduleView=mode.SelectedIndex; var now=DateTimeOffset.Now;
-            heading.Text=scheduleView==0?$"{scheduleDate:yyyy年M月d日} · 日程":scheduleView==1?"近期日程":scheduleView==2?"全部待办":"全部日程";
+            heading.Text=scheduleView==0?$"{scheduleDate:yyyy年M月d日} · 日程":scheduleView==1?"近期日程":scheduleView==2?"全部待办":scheduleView==4?"已到期待办":"全部日程";
             scheduleQuery=query.Text;scheduleKind=types.SelectedItem?.ToString()??"全部类型";
-            var found=(scheduleView==0?ScheduleService.ForDate(entries,scheduleDate):scheduleView==1?ScheduleService.Upcoming(entries,now):scheduleView==2?entries.Where(e=>!e.Completed):entries).Where(e=>(scheduleApplicationId==""||e.ApplicationId==scheduleApplicationId)&&(scheduleKind=="全部类型"||e.Kind==scheduleKind)&&(e.Title+" "+e.Company+" "+e.Item?.Notes+" "+e.Application?.Notes).Contains(query.Text,StringComparison.OrdinalIgnoreCase)).ToList();
+            var found=(scheduleView==0?ScheduleService.ForDate(entries,scheduleDate):scheduleView==1?ScheduleService.Upcoming(entries,now):scheduleView==2?entries.Where(e=>!e.Completed):scheduleView==4?entries.Where(e=>e.Overdue(now)):entries).Where(e=>(scheduleApplicationId==""||e.ApplicationId==scheduleApplicationId)&&(scheduleKind=="全部类型"||e.Kind==scheduleKind)&&(e.Title+" "+e.Company+" "+e.Item?.Notes+" "+e.Application?.Notes).Contains(query.Text,StringComparison.OrdinalIgnoreCase)).ToList();
             heading.Text+=$" · {found.Count} 项";
-            if(found.Count==0){var empty=Stack(10);empty.Children.Add(Text(scheduleView==0?"这一天暂无符合条件的安排。":"暂无符合条件的日程。",14));cards.Children.Add(Card(empty));}
+            if(found.Count==0){var empty=Stack(10);empty.Children.Add(Text(scheduleView==4?"没有已到期的待办。":scheduleView==0?"这一天暂无符合条件的安排。":"暂无符合条件的日程。",14));empty.Children.Add(Button("＋ 添加安排",()=>EditSchedule(new ScheduleItem {StartAt=new DateTimeOffset(scheduleDate.AddHours(9),TimeZoneInfo.Local.GetUtcOffset(scheduleDate)).ToString("O")}),true));cards.Children.Add(Card(empty));}
             foreach(var entry in found) {
                 var item=Stack(10);var summary=Stack(6);var title=Text(entry.Title,17,true);title.MaxLines=2;summary.Children.Add(title);
                 var state=Text(entry.Kind+" · "+entry.When+" · "+(entry.Completed?"✓ 已完成":entry.Overdue(now)?"已到期":"待办"),12,true);state.Foreground=Brush(entry.Completed?"#167D78":entry.Overdue(now)?"#CC7B20":Accent);summary.Children.Add(state);
@@ -79,12 +79,12 @@ public sealed partial class MainWindow
     }
     private async Task CompleteAgenda(AgendaEntry entry,bool completed)
     {
-        bool previous=entry.Completed;await SetAgendaCompleted(entry,completed);await Navigate("schedule");
+        string returnPage=currentPage;bool previous=entry.Completed;await SetAgendaCompleted(entry,completed);await Navigate(returnPage);
         Feedback(completed?"日程已完成":"已恢复为待办",entry.Title,async ()=> {
             // Read current data so undo never overwrites a later edit or recreates a deleted item.
             var latest=(await ReadAgenda()).FirstOrDefault(e=>e.Id==entry.Id);
             if(latest is null||latest.Completed!=completed||latest.Application?.Status is "已录用" or "已结束")throw new InvalidOperationException("日程状态已发生变化，无法撤销这次操作。");
-            await SetAgendaCompleted(latest,previous);if(currentPage=="schedule")await Navigate("schedule");
+            await SetAgendaCompleted(latest,previous);if(currentPage==returnPage)await Navigate(returnPage);
         });
     }
     private async Task SetAgendaCompleted(AgendaEntry entry,bool completed)

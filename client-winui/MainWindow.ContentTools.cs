@@ -137,8 +137,9 @@ public sealed partial class MainWindow
             string inserted=(from>0&&source[from-1]!='\n'?"\n":"")+content+(from+length<source.Length&&source[from+length]!='\n'?"\n":"");
             string result=source[..from]+inserted+source[(from+length)..];
             if(result.Length>30000)throw new IOException("模块正文不能超过 3 万字符，请拆分成多个模块。");
+            FinalizeUndoBurst();
             if(image is not null){section.Images.Add(image);addedImage=true;}
-            lastUndoCapture=DateTime.MinValue;input.Text=result;input.Select(from,inserted.Length);return Task.CompletedTask;
+            input.Text=result;input.Select(from,inserted.Length);return Task.CompletedTask;
         }).ShowAsync();
         // Refresh the image editors after the modal has released its visual tree.
         if(addedImage&&current==target&&selectedEditorPart>=2&&target.Sections.ElementAtOrDefault(selectedEditorPart-2)==section)ShowEditorPart();

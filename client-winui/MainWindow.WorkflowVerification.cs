@@ -15,8 +15,10 @@ public sealed partial class MainWindow
         var alias=CloneDocument(job);alias.Id="external-workflow";alias.Url="https://example.com/jobs/embedded?utm_source=share";alias.Notes="";
         var repeated=await api.Post<CollectionResult<Job>>("favorites/collect",alias);
         Check(first.Created&&!repeated.Created&&repeated.Record.Notes==job.Notes,"canonical favorite collection preserves notes across discovery and shared links");
+        await Navigate("favorites");await Task.Delay(100);var favoriteOrder=InteractionElement<ComboBox>(body,b=>b.Tag as string=="favorite-sort")!;favoriteOrder.SelectedIndex=1;
         favoriteQuery="联动测试公司";favoriteSource="官网";await Navigate("favorites");await Navigate("applications");await Navigate("favorites");
-        Check(InteractionElement<TextBox>(body,b=>b.PlaceholderText=="职位 / 公司 / 备注")?.Text==favoriteQuery&&visibleJobList!.Items.Count==1,"favorite filters survive page switching and refresh");
+        await Task.Delay(100);Check(InteractionElement<ComboBox>(body,b=>b.Tag as string=="favorite-sort")?.SelectedIndex==1,"favorite sort selection survives leaving and reopening the list");
+        Check(InteractionElement<TextBox>(body,b=>Microsoft.UI.Xaml.Automation.AutomationProperties.GetName(b)=="搜索职位收藏")?.Text==favoriteQuery&&visibleJobList!.Items.Count==1,"favorite filters survive page switching and refresh");
         await RemoveFavorite(first.Record);Check(!(await api.Get<List<Job>>("favorites")).Any(j=>j.Id==first.Record.Id)&&feedback.ActionButton is Button,"removing a favorite offers undo");
         ((IInvokeProvider)new ButtonAutomationPeer((Button)feedback.ActionButton!).GetPattern(PatternInterface.Invoke)).Invoke();
         for(int attempt=0;attempt<50;attempt++){if((await api.Get<List<Job>>("favorites")).Any(j=>j.Id==first.Record.Id)&&feedback.ActionButton.IsEnabled)break;await Task.Delay(50);}
@@ -62,8 +64,26 @@ public sealed partial class MainWindow
         FindTextField(sourceDialog,"公司名称")!.Text="工作流测试官网";FindTextField(sourceDialog,"招聘官网链接（HTTPS）")!.Text="https://example.com/jobs";await FeatureClick(sourceDialog,"保存来源");await editSource.WaitAsync(TimeSpan.FromSeconds(15));
         Check((await api.Get<List<CompanySource>>("job-sources")).Any(s=>s.Name=="工作流测试官网"),"corrected company source saves through the shared form");
         var early=Navigate("sources");var late=Navigate("favorites");await Task.WhenAll(early,late);await Task.WhenAll(Navigate("favorites"),Navigate("favorites"));
-        Check(currentPage=="favorites"&&body.RowDefinitions.Count==3&&body.Children.Count==3,"quick and repeated navigation never appends stale page content");
+        Check(currentPage=="favorites"&&body.RowDefinitions.Count==3&&body.Children.Count==4,"quick and repeated navigation retains one controls/list/empty-state/footer set");
         int generation=navigationRevision;await OpenEditor();Check(!PageIsCurrent("favorites",generation),"opening the editor invalidates in-flight list render generations");
         await SaveNativePreview(Path.Combine(output,"workflow-editor.png"));
+        var homeItem=await api.Save("schedule",new ScheduleItem {Title="首页快捷完成验证",StartAt=DateTimeOffset.Now.AddHours(1).ToString("O")});
+        var homeApplication=await api.Save("applications",new ApplicationRecord {Title="首页投递面试验证",Company="测试公司",Url="https://example.com/jobs/home-agenda",Status="面试中",DueAt=DateTimeOffset.Now.AddHours(2).ToString("O"),EventKind="面试"});
+        await Navigate("home");await Task.Delay(200);
+        Check(InteractionElement<Button>(body,b=>b.Tag as string=="home-complete:application:"+homeApplication.Id) is not null,"home shows appointments projected directly from applications");
+        var homeComplete=InteractionElement<Button>(body,b=>b.Tag as string=="home-complete:schedule:"+homeItem.Id)!;
+        ((IInvokeProvider)new ButtonAutomationPeer(homeComplete).GetPattern(PatternInterface.Invoke)).Invoke();
+        for(int i=0;i<60;i++){await Task.Delay(100);if(currentPage=="home"&&(await api.Get<List<ScheduleItem>>("schedule")).Single(s=>s.Id==homeItem.Id).Completed&&feedback.ActionButton is Button)break;}
+        Check(currentPage=="home"&&(await api.Get<List<ScheduleItem>>("schedule")).Single(s=>s.Id==homeItem.Id).Completed,"home completes an appointment without leaving the dashboard");
+        ((IInvokeProvider)new ButtonAutomationPeer((Button)feedback.ActionButton!).GetPattern(PatternInterface.Invoke)).Invoke();
+        for(int i=0;i<60;i++){await Task.Delay(100);if(!(await api.Get<List<ScheduleItem>>("schedule")).Single(s=>s.Id==homeItem.Id).Completed)break;}
+        Check(!(await api.Get<List<ScheduleItem>>("schedule")).Single(s=>s.Id==homeItem.Id).Completed,"home completion can be undone");
+        await Task.Delay(200);await SaveNativePreview(Path.Combine(output,"home-agenda-light.png"));
+        var quickApplication=InteractionElement<Button>(body,b=>b.Content as string=="记录一次投递")!;
+        ((IInvokeProvider)new ButtonAutomationPeer(quickApplication).GetPattern(PatternInterface.Invoke)).Invoke();
+        var quickDialog=await FeatureDialog("更新投递记录");
+        Check(currentPage=="home"&&FindTextField(quickDialog,"职位名称")!.Text=="","home opens a blank application form directly without a list detour");
+        await FeatureClick(quickDialog,"取消");await Task.Delay(150);
+        Check(currentPage=="home","canceling quick application returns to home");
     }
 }

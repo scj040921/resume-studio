@@ -94,6 +94,24 @@ window.verifyPageMotion=async()=>{
   ok([...content.querySelectorAll('button,summary')].every(el=>getComputedStyle(el).webkitTapHighlightColor==='rgba(0, 0, 0, 0)'),'home buttons and summaries suppress the blue WebView touch overlay');
   stackSummary.click();
 
+  const searchablePhoto={id:'photo-search',title:'照片简历',photo:'data:image/jpeg;base64,'+'x'.repeat(100000),profile:{role:'嵌入式工程师'},sections:[{content:'串口驱动开发'}]};
+  clearSearchCache();const photoText=searchableRecord(searchablePhoto);
+  ok(photoText.includes('串口驱动开发')&&!photoText.includes('data:image')&&searchCacheBytes<32768,'resume search retains body text while excluding large photo data from the bounded cache');
+  const applicationText=searchableRecord({title:'我的投递',notes:'下周跟进',resumeTitle:'嵌入式简历',resumeSnapshot:searchablePhoto});
+  ok(applicationText.includes('下周跟进')&&applicationText.includes('嵌入式简历')&&!applicationText.includes('串口驱动开发'),'application search retains notes and resume name without indexing the archived resume');
+  const agendaNow=Date.now(),agendaRows=homeAgenda(Array.from({length:5},(_,i)=>({id:'old-'+i,title:'逾期',startAt:new Date(agendaNow-(i+1)*86400000).toISOString()})),[{id:'interview',title:'投递中的面试',dueAt:new Date(agendaNow+3600000).toISOString(),eventKind:'面试',status:'面试中'},{id:'closed',dueAt:new Date(agendaNow+3600000).toISOString(),status:'已结束'}],agendaNow);
+  ok(agendaRows.filter(r=>r.sourceKind==='schedule').length===2&&agendaRows.some(r=>r.id==='interview'&&r.sourceKind==='applications')&&!agendaRows.some(r=>r.id==='closed'),'home agenda reserves upcoming space, includes application appointments and excludes closed records');
+  await navigate('home');
+  ok(!!content.querySelector('.home-quick-actions [data-action="importResumePdf"]')&&!!content.querySelector('.home-quick-actions [data-page="interviews"]'),'home exposes PDF import and interview practice shortcuts');
+  ok(document.documentElement.scrollWidth<=innerWidth+1,'home action strip fits the mobile viewport');
+  const favoriteFixture=[{id:'late',company:'Beta',title:'Z',deadlineAt:'2030-03-01'},{id:'early',company:'Alpha',title:'A',deadlineAt:'2030-01-01'},{id:'none',company:'Gamma',title:'B'}];
+  ok(sortedFavorites(favoriteFixture,'company')[0].id==='early'&&sortedFavorites(favoriteFixture,'title')[1].id==='none'&&favoriteFixture[0].id==='late','favorite company and title sorting keeps the original list intact');
+  ok(sortedFavorites(favoriteFixture,'deadline').map(r=>r.id).join(',')==='early,late,none','favorite deadline sorting places dated records before undated ones');
+  await navigate('favorites');$('#favorite-order').value='company';$('#favorite-order').dispatchEvent(new Event('change',{bubbles:true}));await navigate('home');await navigate('favorites');
+  ok($('#favorite-order').value==='company','favorite ordering survives page navigation');state.favoriteSort='recent';
+  await navigate('home');setTheme({theme:'dark',interfaceStyle:'haru',motionEnabled:true});
+  const inkProbe=document.createElement('span');inkProbe.style.color='var(--ink)';document.body.append(inkProbe);
+  ok(getComputedStyle(content).color===getComputedStyle(inkProbe).color,'home semantic ink token follows the active dark theme');inkProbe.remove();
   return passed;
  }finally{sampling=false;const sorted=frameGaps.slice().sort((a,b)=>a-b);window.motionTiming={samples:sorted.length,p50:sorted[Math.floor(sorted.length*.5)]||0,p95:sorted[Math.floor(sorted.length*.95)]||0,over50ms:sorted.filter(value=>value>50).length};observer.disconnect();renderPage=savedRender;api=savedApi;content.animate=savedAnimate;gsap.to=savedGsapTo;gsap.fromTo=savedGsapFromTo;document.startViewTransition=savedTransition;setTheme({theme:'light',interfaceStyle:'haru',motionEnabled:true});}
 };

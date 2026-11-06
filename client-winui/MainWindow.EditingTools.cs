@@ -12,33 +12,40 @@ public sealed partial class MainWindow
     private readonly List<string> undoStates=[];
     private readonly List<string> redoStates=[];
     private string undoBaseline="",undoResumeId="";
-    private DateTime lastUndoCapture=DateTime.MinValue;
-    private bool restoringUndo;
+    private bool restoringUndo,undoCapturePending;
     private static Resume CloneResume(Resume r)=>CloneDocument(r);
     private string EditorSnapshot() { if(current is null) return ""; var clone=CloneResume(current); clone.UpdatedAt=""; return JsonSerializer.Serialize(clone,BackendClient.Json); }
     private void InitializeUndo()
     {
         if(current is null||undoResumeId==current.Id) return;
-        undoResumeId=current.Id; undoBaseline=EditorSnapshot(); undoStates.Clear(); redoStates.Clear(); lastUndoCapture=DateTime.MinValue;
+        undoTimer.Stop();undoCapturePending=false;undoResumeId=current.Id; undoBaseline=EditorSnapshot(); undoStates.Clear(); redoStates.Clear();
     }
     private void CaptureUndo()
     {
         if(current is null||restoringUndo) return;
         if(undoResumeId!=current.Id) { InitializeUndo(); return; }
-        string after=EditorSnapshot(); if(after==undoBaseline) return;
-        // Coalesce a typing burst, retaining the state before its first keystroke.
-        if(DateTime.UtcNow-lastUndoCapture>TimeSpan.FromMilliseconds(650)||undoStates.Count==0) {
+        if(!undoCapturePending) {
+            string after=EditorSnapshot(); if(after==undoBaseline) return;
+            // Keep the state before a typing burst; serialize the final state once after input settles.
             undoStates.Add(undoBaseline); if(undoStates.Count>40) undoStates.RemoveAt(0);
+            undoCapturePending=true;
         }
-        undoBaseline=after; lastUndoCapture=DateTime.UtcNow; redoStates.Clear();
+        undoTimer.Stop();undoTimer.Start();redoStates.Clear();
+    }
+    private void FinalizeUndoBurst()
+    {
+        undoTimer.Stop();
+        if(current is not null&&undoCapturePending&&!restoringUndo)undoBaseline=EditorSnapshot();
+        undoCapturePending=false;
     }
     private async Task UndoEditor(bool redo)
     {
         var source=redo?redoStates:undoStates; var target=redo?undoStates:redoStates;
         if(source.Count==0) { Success("没有可"+(redo?"重做":"撤销")+"的修改","会话内最多保留 40 组编辑；跨次启动请使用历史版本。"); return; }
+        FinalizeUndoBurst();
         editTimer.Stop(); previewTimer.Stop(); await SaveCurrent(); target.Add(EditorSnapshot()); string snapshot=source[^1]; source.RemoveAt(source.Count-1);
         restoringUndo=true;
-        try { current=JsonSerializer.Deserialize<Resume>(snapshot,BackendClient.Json)!; undoBaseline=snapshot; lastUndoCapture=DateTime.MinValue; Changed(); await SaveCurrent(); await OpenEditor(); }
+        try { current=JsonSerializer.Deserialize<Resume>(snapshot,BackendClient.Json)!; undoBaseline=snapshot;undoCapturePending=false; Changed(); await SaveCurrent(); await OpenEditor(); }
         finally { restoringUndo=false; }
     }
     private UIElement FormattingBar(TextBox input)
@@ -46,12 +53,12 @@ public sealed partial class MainWindow
         var panel=new Grid {ColumnSpacing=5,Tag="editor-formatting-bar"}; for(int i=0;i<4;i++) panel.ColumnDefinitions.Add(new ColumnDefinition {Width=new GridLength(1,GridUnitType.Star)});
         int index=0;
         foreach(var item in new[] {("加粗","bold"),("列表","bullet"),("小标题","heading"),("表格","table")}) {
-            var button=Button(item.Item1,async ()=> {if(item.Item2=="table"){await InsertContent(input,5);return;}var result=ResumeEditing.Format(NormalizeLines(input.Text),input.SelectionStart,input.SelectionLength,item.Item2); lastUndoCapture=DateTime.MinValue; input.Text=result.Text; input.Focus(FocusState.Programmatic); input.Select(result.Start,result.Length); });
+            var button=Button(item.Item1,async ()=> {if(item.Item2=="table"){await InsertContent(input,5);return;}var result=ResumeEditing.Format(NormalizeLines(input.Text),input.SelectionStart,input.SelectionLength,item.Item2); FinalizeUndoBurst(); input.Text=result.Text; input.Focus(FocusState.Programmatic); input.Select(result.Start,result.Length); });
             button.Padding=new Thickness(4,7,4,7);button.HorizontalAlignment=HorizontalAlignment.Stretch;button.HorizontalContentAlignment=HorizontalAlignment.Center;Grid.SetColumn(button,index++); panel.Children.Add(button);
             ToolTipService.SetToolTip(button,item.Item2=="bold"?"选中文本后加粗 · Ctrl+B":item.Item2=="bullet"?"将选中行切换为列表":item.Item2=="heading"?"插入经历标题与时间":"插入 Markdown 表格");
         }
         var bold=new KeyboardAccelerator {Key=VirtualKey.B,Modifiers=VirtualKeyModifiers.Control};
-        bold.Invoked+=(_,e)=> {e.Handled=true;var result=ResumeEditing.Format(NormalizeLines(input.Text),input.SelectionStart,input.SelectionLength,"bold");lastUndoCapture=DateTime.MinValue;input.Text=result.Text;input.Select(result.Start,result.Length);};input.KeyboardAccelerators.Add(bold);
+        bold.Invoked+=(_,e)=> {e.Handled=true;var result=ResumeEditing.Format(NormalizeLines(input.Text),input.SelectionStart,input.SelectionLength,"bold");FinalizeUndoBurst();input.Text=result.Text;input.Select(result.Start,result.Length);};input.KeyboardAccelerators.Add(bold);
         return panel;
     }
     private async Task SaveCheckpoint()
