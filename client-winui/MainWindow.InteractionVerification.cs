@@ -17,13 +17,15 @@ public sealed partial class MainWindow
     private async Task VerifyHomeShortcuts(string output,List<string> checks)
     {
         await Navigate("home");await Task.Delay(250);body.UpdateLayout();
-        var labels=new[]{"新建简历","查看职位收藏","记录一次投递","新增求职日程"};
-        var buttons=labels.Select(label=>FeatureButton(body,label)??throw new Exception("Home shortcut missing: "+label)).ToArray();
-        var bounds=buttons.Select(button=>button.TransformToVisual(body).TransformBounds(new Windows.Foundation.Rect(0,0,button.ActualWidth,button.ActualHeight))).ToArray();
-        bool oneRow=Math.Abs(bounds[0].Y-bounds[3].Y)<2;
-        bool twoRows=Math.Abs(bounds[0].X-bounds[2].X)<2&&Math.Abs(bounds[1].X-bounds[3].X)<2&&bounds[2].Y>=bounds[0].Bottom;
-        if(bounds.Any(rect=>rect.Width<1)||bounds.Max(rect=>rect.Width)-bounds.Min(rect=>rect.Width)>2||(!oneRow&&!twoRows))throw new Exception("Home shortcuts are not aligned");
-        checks.Add("home shortcuts align in an adaptive row or two rows");
+        var primaryLabels=new[]{"新建简历","导入 PDF 简历"};
+        var secondaryLabels=new[]{"查看职位收藏","记录一次投递","新增求职日程","开始面试复习"};
+        var primary=primaryLabels.Select(label=>FeatureButton(body,label)??throw new Exception("Home primary action missing: "+label)).ToArray();
+        var secondary=secondaryLabels.Select(label=>FeatureButton(body,label)??throw new Exception("Home shortcut missing: "+label)).ToArray();
+        Windows.Foundation.Rect Bounds(Button button)=>button.TransformToVisual(body).TransformBounds(new Windows.Foundation.Rect(0,0,button.ActualWidth,button.ActualHeight));
+        var primaryBounds=primary.Select(Bounds).ToArray();var secondaryBounds=secondary.Select(Bounds).ToArray();
+        if(primaryBounds.Any(rect=>rect.Width<1)||Math.Abs(primaryBounds[0].Y-primaryBounds[1].Y)>2||Math.Abs(primaryBounds[0].Width-primaryBounds[1].Width)>2||primaryBounds[1].X<=primaryBounds[0].X)throw new Exception("Home primary actions are not aligned");
+        if(secondaryBounds.Any(rect=>rect.Width<1||rect.Right>body.ActualWidth+1||rect.Y<primaryBounds.Max(rect=>rect.Bottom)-2))throw new Exception("Home secondary actions are missing, overlapping, or overflowing");
+        checks.Add("home primary actions align and secondary shortcuts remain visible below them");
         if(InteractionElement<Button>(body,b=>Microsoft.UI.Xaml.Automation.AutomationProperties.GetName(b).StartsWith("收藏职位，")) is null)throw new Exception("Home progress entry is not accessible");
         checks.Add("home progress exposes an accessible entry with a real count");
         await SaveNativePreview(Path.Combine(output,"interaction-home.png"));
@@ -34,11 +36,9 @@ public sealed partial class MainWindow
         await VerifyGlassCaptionRegions();var originalSize=AppWindow.Size;
         try{
             AppWindow.Resize(new Windows.Graphics.SizeInt32(800,700));await Task.Delay(250);body.UpdateLayout();await VerifyGlassCaptionRegions();
-            var compact=labels.Select(label=>FeatureButton(body,label)??throw new Exception("Compact home shortcut missing: "+label)).ToArray();
-            var rects=compact.Select(button=>button.TransformToVisual(body).TransformBounds(new Windows.Foundation.Rect(0,0,button.ActualWidth,button.ActualHeight))).ToArray();
-            bool compactRow=Math.Abs(rects[0].Y-rects[3].Y)<2;
-            bool compactWrap=rects[2].Y>=rects[0].Bottom&&Math.Abs(rects[0].X-rects[2].X)<2;
-            if(rects.Any(rect=>rect.Width<1||rect.Right>body.ActualWidth+1)||(!compactRow&&!compactWrap))throw new Exception("Compact home shortcuts overflow");
+            var compactPrimary=primaryLabels.Select(label=>FeatureButton(body,label)??throw new Exception("Compact home primary action missing: "+label)).Select(Bounds).ToArray();
+            var compactSecondary=secondaryLabels.Select(label=>FeatureButton(body,label)??throw new Exception("Compact home shortcut missing: "+label)).Select(Bounds).ToArray();
+            if(compactPrimary.Any(rect=>rect.Width<1||rect.Right>body.ActualWidth+1)||Math.Abs(compactPrimary[0].Y-compactPrimary[1].Y)>2||compactSecondary.Any(rect=>rect.Width<1||rect.Right>body.ActualWidth+1||rect.Y<compactPrimary.Max(item=>item.Bottom)-2))throw new Exception("Compact home actions overflow or lose hierarchy");
             checks.Add("compact glass home keeps shortcuts visible and title bar draggable");
         }finally{AppWindow.Resize(originalSize);await Task.Delay(200);}
         var scrollProbe=new ScrollViewer {Width=160,Height=100,VerticalScrollBarVisibility=ScrollBarVisibility.Visible,Content=new Border {Height=400}};
