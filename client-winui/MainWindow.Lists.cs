@@ -47,7 +47,8 @@ public sealed partial class MainWindow
             if(!PageIsCurrent("favorites",generation))return;
             string selected=source.SelectedItem as string??"全部平台";
             favoriteQuery=query.Text;favoriteSource=selected;
-            var found=jobs.Where(j=>(j.Title+" "+j.Company+" "+j.Notes+" "+j.Tags).Contains(query.Text,StringComparison.OrdinalIgnoreCase)&&(selected=="全部平台"||j.Source==selected)).ToList();
+            string text=query.Text;
+            var found=jobs.Where(j=>(selected=="全部平台"||j.Source==selected)&&(text.Length==0||(j.Title+" "+j.Company+" "+j.Notes+" "+j.Tags).Contains(text,StringComparison.OrdinalIgnoreCase))).ToList();
             bool hasFilter=query.Text.Length>0||selected!="全部平台";
             empty.Visibility=found.Count==0?Visibility.Visible:Visibility.Collapsed;list.Visibility=found.Count==0?Visibility.Collapsed:Visibility.Visible;
             emptyTitle.Text=jobs.Count==0?"保留值得投递的机会":"没有找到匹配的职位";
