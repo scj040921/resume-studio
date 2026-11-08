@@ -13,9 +13,10 @@ window.verifyPageMotion=async()=>{
   const modalButtons=[...document.querySelectorAll('#modal-buttons :is(button,fluent-button)')];modalButtons.at(-1).focus();document.dispatchEvent(new KeyboardEvent('keydown',{key:'Tab',bubbles:true,cancelable:true}));
   ok(document.activeElement?.id==='focus-probe','dialog tab order wraps inside the modal');
   document.dispatchEvent(new KeyboardEvent('keydown',{key:'Escape',bubbles:true,cancelable:true}));ok(await modalTest==='cancel'&&!content.closest('main').inert,'escape cancels safely and restores background interaction');
-  const closingTest=dialog('<h2>关闭过渡检查</h2>',[['取消','cancel'],['确定','ok']]);const closingOverlay=document.querySelector('#overlay');closingOverlay.querySelector('fluent-button[appearance="primary"]').click();
+  const closingTest=dialog('<h2>关闭过渡检查</h2>',[['取消','cancel'],['确定','ok']]);const closingOverlay=document.querySelector('#overlay');closingOverlay.querySelector('fluent-button[appearance="primary"]').dispatchEvent(new MouseEvent('click',{bubbles:true,detail:1}));
   ok(!closingOverlay.hidden&&closingOverlay.getAnimations().some(animation=>animation.effect?.target===closingOverlay),'pointer confirmation plays the dialog exit transition');
   ok(await closingTest==='ok'&&closingOverlay.hidden&&!content.closest('main').inert,'dialog exit completes once and restores background interaction');
+  const keyboardClose=dialog('<h2>键盘操作</h2>',[['确定','ok']]);closingOverlay.querySelector('fluent-button').click();ok(closingOverlay.hidden&&await keyboardClose==='ok','keyboard confirmation closes immediately and restores interaction');
   observer.observe(content,{childList:true});requestAnimationFrame(sample);
   document.startViewTransition=callback=>{snapshots++;return savedTransition.call(document,callback);};
   content.animate=function(frames,options){animations++;return savedAnimate.call(this,frames,options);};

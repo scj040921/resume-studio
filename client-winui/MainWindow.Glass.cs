@@ -32,9 +32,10 @@ public sealed partial class MainWindow
         // One real window blur, with translucent tint on top. Per-card AcrylicBrush can fall back to
         // an opaque fill in desktop windows, hiding the glass; layering tints also avoids repeated blur work.
         // Blur belongs to the window and navigation; reading surfaces remain stable.
-        panelMaterial=Brush(darkStyle?"#F2252827":"#F5FFFFFF");
-        edgeMaterial=Brush(darkStyle?"#444946":"#DDE1DD");
-        navigationMaterial=Brush(darkStyle?"#C8202422":"#C9EFF2EE");
+        bool highContrast=new Windows.UI.ViewManagement.AccessibilitySettings().HighContrast;
+        panelMaterial=Brush(highContrast?(darkStyle?"#252827":"#FFFFFF"):(darkStyle?"#ED252827":"#F2FFFFFF"));
+        edgeMaterial=Brush(highContrast?Stroke:(darkStyle?"#B8667670":"#C4CFDCD5"));
+        navigationMaterial=Brush(highContrast?(darkStyle?"#202422":"#EFF2EE"):(darkStyle?"#C0202422":"#C2EFF2EE"));
     }
 
     private static void ConfigureGlassScrollbars()

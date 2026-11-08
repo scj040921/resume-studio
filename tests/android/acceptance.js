@@ -2,7 +2,7 @@ window.acceptanceResult=null;
 (async()=>{
  const passed=[];const ok=(v,name)=>{if(!v)throw new Error(name);passed.push(name);};
  try{
-  await navigate('home');await new Promise(r=>setTimeout(r,600));ok(document.querySelector('#content h1').textContent.includes('简历'),'home loads in production WebView');
+  await navigate('home');await new Promise(r=>setTimeout(r,600));ok(!!document.querySelector('#content[data-route="home"] h1')&&!!document.querySelector('.home-grid'),'home loads in production WebView');
   ok([...document.querySelectorAll('.home-grid .stat-card')].every(el=>el.tagName==='BUTTON'&&el.textContent.trim()&&el.getBoundingClientRect().height>=48),'home metrics are accessible touch targets');
   const homeActions=[...document.querySelectorAll('.hero .actions :is(button,fluent-button)')].map(el=>el.getBoundingClientRect());ok(homeActions.length===2&&Math.abs(homeActions[0].top-homeActions[1].top)<1&&Math.abs(homeActions[0].width-homeActions[1].width)<1,'home actions stay aligned even on narrow screens');
   const muted=getComputedStyle(document.querySelector('.home-grid .stat-label')).color.match(/[\d.]+/g).slice(0,3).map(Number).map(v=>{v/=255;return v<=.04045?v/12.92:((v+.055)/1.055)**2.4}),mutedLuminance=.2126*muted[0]+.7152*muted[1]+.0722*muted[2];ok(1.05/(mutedLuminance+.05)>=4.5,'secondary text has readable contrast on light surfaces');

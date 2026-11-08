@@ -26,14 +26,20 @@ async function dialog(html,choices=[['确定','ok']]){
  return new Promise(resolve=>{
   let closing=false;
   const finish=async(value,instant=false)=>{if(closing)return;closing=true;document.removeEventListener('keydown',keys,true);overlay.style.pointerEvents='none';
-   if(!instant&&document.body.classList.contains('motion')&&!matchMedia('(prefers-reduced-motion: reduce)').matches&&overlay.animate){
-    const exit=overlay.animate([{opacity:1},{opacity:0}],{duration:120,easing:'ease-out'});
-    try{await exit.finished;}catch(_){}
-   }
-   overlay.hidden=true;overlay.style.removeProperty('pointer-events');background.forEach(([el,inert])=>el.inert=inert);requestAnimationFrame(()=>{if(previous?.isConnected&&!previous.disabled)previous.focus();});resolve(value);};
+   let exit,panelExit,timer;
+   try{
+    if(!instant&&!document.hidden&&document.body.classList.contains('motion')&&!matchMedia('(prefers-reduced-motion: reduce)').matches&&overlay.animate&&modal.animate){
+     const current=getComputedStyle(modal),sheet=!document.body.classList.contains('classic')&&matchMedia('(max-width: 600px)').matches;
+     panelExit=modal.animate([{opacity:current.opacity,transform:current.transform},{opacity:0,transform:sheet?'translateY(18px)':'translateY(6px) scale(.99)'}],{duration:160,easing:'ease-out',fill:'forwards'});
+     exit=overlay.animate([{opacity:1},{opacity:0}],{duration:160,easing:'ease-out'});
+     await Promise.race([Promise.allSettled([exit.finished,panelExit.finished]),new Promise(done=>{timer=setTimeout(done,300);})]);
+    }
+   }catch(error){console.warn('对话框关闭动画不可用',error);}finally{
+    clearTimeout(timer);overlay.hidden=true;exit?.cancel();panelExit?.cancel();overlay.style.removeProperty('pointer-events');background.forEach(([el,inert])=>el.inert=inert);requestAnimationFrame(()=>{if(previous?.isConnected&&!previous.disabled)previous.focus();});resolve(value);
+   }};
  const focusable=()=>[...modal.querySelectorAll('button:not(:disabled),fluent-button:not([disabled]),input:not(:disabled),select:not(:disabled),textarea:not(:disabled),a[href],[tabindex="0"]')].filter(el=>el.getClientRects().length);
   function keys(e){if(e.key==='Escape'&&choices.some(choice=>choice[1]==='cancel')){e.preventDefault();e.stopImmediatePropagation();finish('cancel',true);}else if(e.key==='Tab'){const items=focusable(),first=items[0],last=items.at(-1);if(!items.length){e.preventDefault();return;}if(e.shiftKey&&(document.activeElement===first||!modal.contains(document.activeElement))){e.preventDefault();last.focus();}else if(!e.shiftKey&&(document.activeElement===last||!modal.contains(document.activeElement))){e.preventDefault();first.focus();}}}
-  for(const [label,value]of choices){const b=document.createElement('fluent-button');b.setAttribute('size','large');b.setAttribute('appearance',value==='cancel'?'outline':'primary');b.textContent=label;if(value!=='cancel')b.className='primary';b.onclick=()=>finish(value);$('#modal-buttons').append(b);}
+  for(const [label,value]of choices){const b=document.createElement('fluent-button');b.setAttribute('size','large');b.setAttribute('appearance',value==='cancel'?'outline':'primary');b.textContent=label;if(value!=='cancel')b.className='primary';b.onclick=event=>finish(value,event.detail===0);$('#modal-buttons').append(b);}
   document.addEventListener('keydown',keys,true);(focusable()[0]||modal).focus();
  });
 }
