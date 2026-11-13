@@ -28,6 +28,12 @@ public sealed partial class MainWindow
         checks.Add("home primary actions align and secondary shortcuts remain visible below them");
         if(InteractionElement<Button>(body,b=>Microsoft.UI.Xaml.Automation.AutomationProperties.GetName(b).StartsWith("收藏职位，")) is null)throw new Exception("Home progress entry is not accessible");
         checks.Add("home progress exposes an accessible entry with a real count");
+        var resumePanel=InteractionElement<Border>(body,b=>b.Tag?.ToString()=="home-resume")!;
+        var progressPanel=InteractionElement<Border>(body,b=>b.Tag?.ToString()=="home-progress")!;
+        var resumeBounds=resumePanel.TransformToVisual(body).TransformBounds(new Windows.Foundation.Rect(0,0,resumePanel.ActualWidth,resumePanel.ActualHeight));
+        var progressBounds=progressPanel.TransformToVisual(body).TransformBounds(new Windows.Foundation.Rect(0,0,progressPanel.ActualWidth,progressPanel.ActualHeight));
+        if(Math.Abs(resumeBounds.Left-progressBounds.Left)>1||Math.Abs(resumeBounds.Width-progressBounds.Width)>1||progressBounds.Top<resumeBounds.Bottom+16)throw new Exception("Home overview sections lose alignment or overlap");
+        checks.Add("home resume and progress use equal full-width sections with a clear vertical gap");
         await SaveNativePreview(Path.Combine(output,"interaction-home.png"));
         preferences.InterfaceStyle="haru";preferences.Theme="light";await ApplyPreferences();await Task.Delay(200);
         if(!haruStyle)throw new Exception("Glass home theme was not applied");
@@ -40,6 +46,11 @@ public sealed partial class MainWindow
             var compactSecondary=secondaryLabels.Select(label=>FeatureButton(body,label)??throw new Exception("Compact home shortcut missing: "+label)).Select(Bounds).ToArray();
             if(compactPrimary.Any(rect=>rect.Width<1||rect.Right>body.ActualWidth+1)||Math.Abs(compactPrimary[0].Y-compactPrimary[1].Y)>2||compactSecondary.Any(rect=>rect.Width<1||rect.Right>body.ActualWidth+1||rect.Y<compactPrimary.Max(item=>item.Bottom)-2))throw new Exception("Compact home actions overflow or lose hierarchy");
             checks.Add("compact glass home keeps shortcuts visible and title bar draggable");
+            var compactMetrics=InteractionElement<Grid>(body,g=>g.Tag?.ToString()=="home-metrics")!;
+            int expectedColumns=compactMetrics.ActualWidth>=600?4:2;
+            if(compactMetrics.Children.Cast<FrameworkElement>().Any(item=>item.ActualWidth<100)||compactMetrics.Children.Cast<FrameworkElement>().Select(Grid.GetRow).Distinct().Count()!=4/expectedColumns)throw new Exception("Compact home metrics are cramped or do not wrap");
+            checks.Add("compact home metrics reflow into readable equal columns");
+            await SaveNativePreview(Path.Combine(output,"interaction-home-compact.png"));
         }finally{AppWindow.Resize(originalSize);await Task.Delay(200);}
         var scrollProbe=new ScrollViewer {Width=160,Height=100,VerticalScrollBarVisibility=ScrollBarVisibility.Visible,Content=new Border {Height=400}};
         body.Children.Add(scrollProbe);body.UpdateLayout();await Task.Delay(200);

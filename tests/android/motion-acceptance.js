@@ -17,6 +17,9 @@ window.verifyPageMotion=async()=>{
   ok(!closingOverlay.hidden&&closingOverlay.getAnimations().some(animation=>animation.effect?.target===closingOverlay),'pointer confirmation plays the dialog exit transition');
   ok(await closingTest==='ok'&&closingOverlay.hidden&&!content.closest('main').inert,'dialog exit completes once and restores background interaction');
   const keyboardClose=dialog('<h2>键盘操作</h2>',[['确定','ok']]);closingOverlay.querySelector('fluent-button').click();ok(closingOverlay.hidden&&await keyboardClose==='ok','keyboard confirmation closes immediately and restores interaction');
+  const backClose=dialog('<h2>返回操作</h2>',[['执行操作','apply'],['取消','cancel']]);window.setBackProgress(.6);ok(!content.classList.contains('back-preview'),'an open dialog keeps its background stationary during predictive Back');await window.appBack();ok(await backClose==='cancel'&&closingOverlay.hidden,'system Back cancels even when the primary action is listed first');
+  setTheme({theme:'light',interfaceStyle:'haru',motionEnabled:false});window.setBackProgress(.7);ok(!content.classList.contains('back-preview')&&!content.style.getPropertyValue('--back-offset'),'disabled motion keeps predictive Back stationary');
+  setTheme({theme:'light',interfaceStyle:'haru',motionEnabled:true});window.setBackProgress(.5);window.cancelBackProgress();window.setBackProgress(.6);await wait(270);ok(content.classList.contains('back-preview'),'a canceled gesture cannot clear the next gesture preview');window.cancelBackProgress();await wait(270);
   observer.observe(content,{childList:true});requestAnimationFrame(sample);
   document.startViewTransition=callback=>{snapshots++;return savedTransition.call(document,callback);};
   content.animate=function(frames,options){animations++;return savedAnimate.call(this,frames,options);};
